@@ -343,6 +343,11 @@
       flex-shrink: 0;
     }
 
+    .palette { display: grid; grid-template-columns: repeat(8, 30px); gap: 8px; }
+    .palette .chip { width: 30px; height: 30px; border-radius: 8px; }
+    .palette.small { grid-template-columns: repeat(8, 22px); gap: 6px; }
+    .palette.small .chip { width: 22px; height: 22px; border-radius: 6px; }
+
     .chip.on { outline: 2px solid var(--slate); outline-offset: 2px; }
 
     .preview {
@@ -457,15 +462,19 @@
       2:  ['cct'],
       4:  ['color', 'wb'],
       5:  ['color', 'cct'],
-      16: ['color'],
+      16: ['color', 'segments'],
       19: ['color', 'wb', 'motor', 'laser'],
-      20: ['color', 'wb'],
-      21: ['color', 'cct']
+      20: ['color', 'wb', 'segments'],
+      21: ['color', 'cct', 'segments']
     };
     const COLOR_TABS_DEFAULT = ['color', 'cct', 'wb'];
-    const COLOR_TAB_NAMES = { color: 'Kolor', cct: 'Barwa bieli', wb: 'Biały', motor: 'Silnik', laser: 'Gwiazdy' };
+    const COLOR_TAB_NAMES = { color: 'Kolor', cct: 'Barwa bieli', wb: 'Biały', motor: 'Silnik', laser: 'Gwiazdy', segments: 'Odcinki' };
 
-    const CLASSIC_RGB = [[255, 0, 0], [255, 0, 255], [0, 0, 255], [0, 255, 255], [0, 255, 0], [255, 255, 0], [255, 255, 255]];
+    // Indexes are stored in saved segments and favourites, so new colours are only appended.
+    // PALETTE_ORDER is the display order (rainbow, white last).
+    const CLASSIC_RGB = [[255, 0, 0], [255, 0, 255], [0, 0, 255], [0, 255, 255], [0, 255, 0], [255, 255, 0], [255, 255, 255], [255, 128, 0], [255, 0, 128], [128, 0, 255], [0, 255, 128], [255, 64, 0], [255, 192, 0], [128, 255, 0], [0, 128, 255], [64, 0, 255]];
+    const CLASSIC_NAMES = ['czerwony', 'magenta', 'niebieski', 'cyjan', 'zielony', 'żółty', 'biały', 'pomarańczowy', 'różowy', 'purpurowy', 'morski', 'czerwono-pomarańczowy', 'bursztynowy', 'limonkowy', 'lazurowy', 'indygo'];
+    const PALETTE_ORDER = [0, 11, 7, 12, 5, 13, 4, 10, 3, 14, 2, 15, 9, 1, 8, 6];
 
     const DOT = {
       RD: '#E5484D', GN: '#46A758', BU: '#3E63DD', YE: '#F5D90A', CYAN: '#00C2D7',
@@ -576,6 +585,7 @@
     }
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const SEGMENT_PAUSE_MS = 3000;
 
     // Native Web Bluetooth objects must stay outside Alpine's reactive proxies.
     const links = new Map();
@@ -596,6 +606,7 @@
           return e.name === 'SecurityError' || (e.name === 'NotAllowedError' && /permission|blocked/i.test(msg));
         },
         devices: [],
+        autoConnectSupported: true,
         tab: 'color',
         power: false,
         toastText: '',
@@ -617,8 +628,8 @@
 
         sceneTab: 0,
         modeIndex: -1,
-        speed: 50,
-        modeBrightness: 50,
+        speed: 0,
+        modeBrightness: 100,
 
         micSource: 'device',
         sensitivity: 50,
@@ -627,23 +638,33 @@
         level: 0,
         micColorIndex: 0,
 
+        favorites: [],
         alarms: [],
         alarmForm: null,
         delay: null,
         delayForm: null,
 
         icOrder: 0,
-        icLength: 0,
+        icLength: 84,
+        segments: [{ color: 0, end: 42 }, { color: 2, end: null }],
+        segmentsBusy: false,
+        segmentsActive: false,
 
-        RGB_SCENES, MAGIC_SCENES, TWO_PATH_SCENES, CLASSIC_RGB, IC_ORDERS, WEEKDAYS, GROUPS, COLOR_TAB_NAMES,
+        RGB_SCENES, MAGIC_SCENES, TWO_PATH_SCENES, CLASSIC_RGB, CLASSIC_NAMES, PALETTE_ORDER, IC_ORDERS, WEEKDAYS, GROUPS, COLOR_TAB_NAMES,
 
         init() {
           const s = this.load('settings', {});
           if (Number.isInteger(s.brightness)) this.brightness = s.brightness;
           if (Number.isInteger(s.icOrder)) this.icOrder = s.icOrder;
-          if (Number.isInteger(s.icLength)) this.icLength = s.icLength;
+          if (Number.isInteger(s.icLength) && s.icLength >= 16) this.icLength = s.icLength;
+          const segs = this.load('segments', null);
+          if (Array.isArray(segs) && segs.length >= 2) this.segments = segs;
+          this.segmentsActive = this.load('segmentsActive', false) === true;
+
           this.alarms = this.load('alarms', []);
           this.delay = this.load('delay', null);
+          const favs = this.load('favorites', []);
+          this.favorites = Array.isArray(favs) ? favs : [];
 
           this.$watch('group', () => {
             this.colorTab = this.colorTabs[0];
@@ -657,6 +678,7 @@
             if (v === 'color') this.$nextTick(() => this.drawWheel());
           });
           this.$nextTick(() => this.drawWheel());
+          this.restoreDevices();
         },
 
         // ---------- persistence ----------
@@ -718,25 +740,89 @@
             this.toast('Nie udało się wybrać urządzenia: ' + (e && e.message ? e.message : e));
             return;
           }
-          let entry = this.devices.find(d => d.id === device.id);
-          if (!entry) {
-            const saved = this.load('group.' + device.id, null);
-            const first = this.selectedDevices.length === 0;
-            this.devices.push({
-              id: device.id,
-              name: device.name || 'Lampa',
-              connected: false,
-              connecting: false,
-              selected: first,
-              group: Number.isInteger(saved) ? saved : 16,
-              type: null
-            });
-            entry = this.devices[this.devices.length - 1];
-            device.addEventListener('gattserverdisconnected', () => this.onDisconnected(device.id));
-            links.set(device.id, { device, char: null, chain: Promise.resolve() });
-          }
+          this.registerDevice(device);
+          const d = this.dev(device.id);
+          d.manual = false;
           await this.connect(device.id);
           this.readAdvertisement(device);
+        },
+
+        registerDevice(device) {
+          if (this.dev(device.id)) return;
+          const saved = this.load('group.' + device.id, null);
+          this.devices.push({
+            id: device.id,
+            name: device.name || 'Lampa',
+            connected: false,
+            connecting: false,
+            waiting: false,
+            manual: false,
+            selected: this.selectedDevices.length === 0,
+            group: Number.isInteger(saved) ? saved : 16,
+            type: null
+          });
+          device.addEventListener('gattserverdisconnected', () => this.onDisconnected(device.id));
+          links.set(device.id, { device, char: null, chain: Promise.resolve(), retry: null, watching: false });
+        },
+
+        // Lamps paired earlier are returned by getDevices() without the chooser (Chrome needs the
+        // Web Bluetooth permissions backend for this; elsewhere the method is missing).
+        async restoreDevices() {
+          if (!this.supported) return;
+          if (typeof navigator.bluetooth.getDevices !== 'function') {
+            this.autoConnectSupported = false;
+            return;
+          }
+          let list = [];
+          try {
+            list = await navigator.bluetooth.getDevices();
+          } catch (e) {
+            return;
+          }
+          list.forEach(device => {
+            this.registerDevice(device);
+            this.autoConnect(device.id, 0);
+          });
+        },
+
+        async autoConnect(id, attempt) {
+          const link = links.get(id);
+          const d = this.dev(id);
+          if (!link || !d || d.manual || d.connected || d.connecting) return;
+          clearTimeout(link.retry);
+          d.waiting = true;
+          if (await this.connect(id, true)) {
+            d.waiting = false;
+            this.readAdvertisement(link.device);
+            return;
+          }
+          if (d.manual || !links.has(id)) {
+            d.waiting = false;
+            return;
+          }
+          // Out of range or asleep: connect as soon as the lamp advertises again, with a timer as fallback.
+          if (!link.watching && typeof link.device.watchAdvertisements === 'function') {
+            const ctrl = new AbortController();
+            const onAdv = () => {
+              link.device.removeEventListener('advertisementreceived', onAdv);
+              link.watching = false;
+              ctrl.abort();
+              this.autoConnect(id, attempt);
+            };
+            link.device.addEventListener('advertisementreceived', onAdv);
+            try {
+              link.watching = true;
+              await link.device.watchAdvertisements({ signal: ctrl.signal });
+            } catch (e) {
+              link.watching = false;
+              link.device.removeEventListener('advertisementreceived', onAdv);
+            }
+          }
+          if (attempt < 10) {
+            link.retry = setTimeout(() => this.autoConnect(id, attempt + 1), Math.min(30000, 3000 * (attempt + 1)));
+          } else {
+            d.waiting = false;
+          }
         },
 
         async request(withManufacturer) {
@@ -755,10 +841,11 @@
           return this.devices.find(d => d.id === id);
         },
 
-        async connect(id) {
+        async connect(id, silent) {
           const link = links.get(id);
           const d = this.dev(id);
-          if (!link || !d || d.connecting) return;
+          if (!link || !d || d.connecting) return false;
+          if (!silent) d.manual = false;
           d.connecting = true;
           try {
             const server = await link.device.gatt.connect();
@@ -766,24 +853,35 @@
             link.char = await service.getCharacteristic(UUID_WRITE);
             link.chain = Promise.resolve();
             d.connected = true;
+            d.waiting = false;
             await this.writeTo(id, this.timePacket());
+            return true;
           } catch (e) {
             d.connected = false;
             link.char = null;
-            this.toast('Błąd połączenia z ' + d.name + ': ' + (e && e.message ? e.message : e));
+            if (!silent) this.toast('Błąd połączenia z ' + d.name + ': ' + (e && e.message ? e.message : e));
+            return false;
           } finally {
             d.connecting = false;
           }
         },
 
         disconnect(id) {
+          const d = this.dev(id);
+          if (d) {
+            d.manual = true;
+            d.waiting = false;
+          }
           const link = links.get(id);
+          if (link) clearTimeout(link.retry);
           if (link && link.device.gatt.connected) link.device.gatt.disconnect();
           this.onDisconnected(id);
         },
 
         forget(id) {
           this.disconnect(id);
+          const link = links.get(id);
+          if (link && typeof link.device.forget === 'function') link.device.forget().catch(() => {});
           links.delete(id);
           this.devices = this.devices.filter(d => d.id !== id);
           if (this.devices.length && !this.selectedDevices.length) this.devices[0].selected = true;
@@ -793,7 +891,13 @@
           const d = this.dev(id);
           const link = links.get(id);
           if (link) link.char = null;
-          if (d) d.connected = false;
+          if (!d) return;
+          const wasConnected = d.connected;
+          d.connected = false;
+          if (wasConnected && !d.manual) {
+            clearTimeout(link.retry);
+            link.retry = setTimeout(() => this.autoConnect(id, 0), 1000);
+          }
         },
 
         toggleSelect(d) {
@@ -844,14 +948,16 @@
         },
 
         // ---------- transport ----------
-        writeTo(id, bytes) {
+        writeTo(id, bytes, confirmed) {
           const link = links.get(id);
           if (!link) return Promise.resolve();
           link.chain = link.chain.then(async () => {
             const c = link.char;
             if (!c) return;
             const data = new Uint8Array(bytes);
-            if (c.properties.writeWithoutResponse && c.writeValueWithoutResponse) await c.writeValueWithoutResponse(data);
+            // confirmed: wait for the BLE-level acknowledgement when the characteristic allows it
+            if (confirmed && c.properties.write && c.writeValueWithResponse) await c.writeValueWithResponse(data);
+            else if (c.properties.writeWithoutResponse && c.writeValueWithoutResponse) await c.writeValueWithoutResponse(data);
             else if (c.writeValueWithResponse) await c.writeValueWithResponse(data);
             else await c.writeValue(data);
           }).catch(e => {
@@ -860,14 +966,27 @@
           return link.chain;
         },
 
-        async send(bytes) {
+        // fromSegments: packets of the static segments feature (sent with BLE confirmation when possible).
+        async send(bytes, fromSegments) {
+          const confirmed = !!fromSegments;
           const targets = this.devices.filter(d => d.selected && d.connected);
+          // Segments shrink the IC length; any other lighting command (power, colour, mode, rhythm,
+          // motor, laser) must drive the whole strip again, so restore the full length first.
+          if (!fromSegments && this.segmentsActive && targets.length && [0x01, 0x03, 0x04, 0x07, 0x10, 0x11, 0x15, 0x17].includes(bytes[0])) {
+            const full = parseInt(this.icLength, 10);
+            if (Number.isInteger(full) && full >= 16 && full <= 2048) {
+              this.setSegmentsActive(false);
+              const lenPacket = [0x0f, full & 0xff, (full >> 8) & 0xff];
+              this.pushLog(toHex(lenPacket));
+              await Promise.all(targets.map(d => this.writeTo(d.id, lenPacket)));
+            }
+          }
           this.pushLog(toHex(bytes), targets.length === 0);
           if (!targets.length) {
             if (!this.toastText) this.toast(this.devices.length ? 'Zaznacz połączoną lampę.' : 'Najpierw połącz lampę.');
             return;
           }
-          await Promise.all(targets.map(d => this.writeTo(d.id, bytes)));
+          await Promise.all(targets.map(d => this.writeTo(d.id, bytes, confirmed)));
         },
 
         // Coalesces fast slider/picker updates: only the newest packet per key is sent.
@@ -1051,6 +1170,296 @@
             head: [this.sceneTab + 1],
             tail: [count].concat(hexBytes(value))
           }));
+        },
+
+        // ---------- static segments ----------
+        // No per-LED command exists. LEDs past the declared IC length (0F) keep their last colour,
+        // so we paint the top colour at full length, then shrink the length and paint lower segments.
+        // Split the strip into equal parts; the first end is clamped to the controller minimum of 16 LEDs.
+        splitSegmentsEvenly() {
+          const full = parseInt(this.icLength, 10);
+          if (!Number.isInteger(full) || full < 16) return;
+          const k = this.segments.length;
+          let prev = 0;
+          this.segments.forEach((seg, i) => {
+            if (i === k - 1) {
+              seg.end = null;
+              return;
+            }
+            const end = Math.max(16, prev + 1, Math.round(full * (i + 1) / k));
+            seg.end = end;
+            prev = end;
+          });
+          this.save('segments', this.segments);
+        },
+
+        // New segment goes to the bottom of the lamp by splitting the current bottom segment in half;
+        // every boundary already set stays where it is.
+        addSegment() {
+          if (this.segments.length >= 6) return;
+          const full = parseInt(this.icLength, 10) || 0;
+          const bottom = this.segments[0];
+          const bottomEnd = bottom.end === null ? full : parseInt(bottom.end, 10) || 0;
+          const end = Math.max(16, Math.round(bottomEnd / 2));
+          if (end >= bottomEnd) {
+            this.toast('Dolny odcinek jest za krótki, żeby go podzielić (minimum 16 diod na dole).');
+            return;
+          }
+          const pos = PALETTE_ORDER.indexOf(bottom.color);
+          const color = PALETTE_ORDER[(pos + 3) % PALETTE_ORDER.length];
+          this.segments.unshift({ color, end });
+          this.save('segments', this.segments);
+        },
+
+        // Segment sizes rounded to whole percent with the largest remainder method, so they add up
+        // to exactly 100%; "do X%" is the running sum from the bottom.
+        segmentPercent(i) {
+          const full = parseInt(this.icLength, 10);
+          if (!Number.isInteger(full) || full <= 0) return '';
+          const k = this.segments.length;
+          const ends = this.segments.map((seg, j) => (j === k - 1 ? full : parseInt(seg.end, 10)));
+          if (ends.some(e => !Number.isFinite(e))) return '';
+          const sizes = ends.map((e, j) => Math.max(0, e - (j === 0 ? 0 : ends[j - 1])));
+          const total = sizes.reduce((x, y) => x + y, 0);
+          if (total <= 0) return '';
+          const exact = sizes.map(v => v / total * 100);
+          const pct = exact.map(Math.floor);
+          let rest = 100 - pct.reduce((x, y) => x + y, 0);
+          exact.map((v, j) => [v - Math.floor(v), j]).sort((p, q) => q[0] - p[0]).forEach(([, j]) => {
+            if (rest > 0) { pct[j]++; rest--; }
+          });
+          const upTo = pct.slice(0, i + 1).reduce((x, y) => x + y, 0);
+          return 'do ' + upTo + '% · odcinek ' + pct[i] + '%';
+        },
+
+        // Removing a segment lets its neighbour take the space; other boundaries stay unchanged.
+        removeSegment(i) {
+          if (this.segments.length <= 2) return;
+          this.segments.splice(i, 1);
+          this.segments[this.segments.length - 1].end = null;
+          this.save('segments', this.segments);
+        },
+
+        segmentsError() {
+          const full = parseInt(this.icLength, 10);
+          if (!Number.isInteger(full) || full < 16 || full > 2048) return 'Podaj pełną liczbę diod taśmy (16–2048).';
+          let prev = 0;
+          for (let i = 0; i < this.segments.length - 1; i++) {
+            const end = parseInt(this.segments[i].end, 10);
+            if (!Number.isInteger(end) || end < 16) return 'Odcinek ' + (this.segments.length - i) + ': koniec musi być co najmniej na diodzie 16.';
+            if (end <= prev) return 'Odcinek ' + (this.segments.length - i) + ': granica musi być wyżej niż granica odcinka pod nim.';
+            if (end >= full) return 'Odcinek ' + (this.segments.length - i) + ': koniec musi być mniejszy niż pełna liczba diod (' + full + ').';
+            prev = end;
+          }
+          return '';
+        },
+
+        async applySegments() {
+          const err = this.segmentsError();
+          if (err) { this.toast(err); return; }
+          if (this.segmentsBusy) return;
+          this.segmentsBusy = true;
+          this.save('segments', this.segments);
+          this.saveSettings();
+          const full = parseInt(this.icLength, 10);
+          try {
+            this.power = true;
+            // Behave like clicking each row by hand: one segment at a time with a pause in between,
+            // otherwise the lamp misses some of the segments.
+            const segs = this.segmentSteps();
+            for (let i = 0; i < segs.length; i++) {
+              if (i > 0) await sleep(SEGMENT_PAUSE_MS);
+              for (const p of segs[i].packets) await this.send(p, true);
+            }
+            this.setSegmentsActive(this.segments.length > 1);
+          } finally {
+            this.segmentsBusy = false;
+          }
+        },
+
+        // Ordered list of {label, packets}; used for sending and for the on-screen preview.
+        segmentSteps() {
+          const full = parseInt(this.icLength, 10) || 0;
+          const k = this.segments.length;
+          const names = CLASSIC_NAMES;
+          const steps = this.segments.map((seg, i) => {
+            const end = i === k - 1 ? full : parseInt(seg.end, 10) || 0;
+            return {
+              index: i,
+              label: 'diody 1–' + end + ': ' + names[seg.color],
+              packets: [[0x0f, end & 0xff, (end >> 8) & 0xff], [0x03].concat(CLASSIC_RGB[seg.color], [0, 0, 0])]
+            };
+          });
+          // Whole strip first (top colour), then shrink and paint lower segments.
+          // The reverse order (grow from the bottom) does not work on the lamp.
+          return steps.reverse();
+        },
+
+        // Sends one segment on its own: its length (full length for the top one) and its colour.
+        async applySegment(i) {
+          const err = this.segmentsError();
+          if (err) { this.toast(err); return; }
+          this.save('segments', this.segments);
+          this.saveSettings();
+          const step = this.segmentSteps().find(st => st.index === i);
+          this.power = true;
+          this.setSegmentsActive(i < this.segments.length - 1);
+          for (const p of step.packets) await this.send(p, true);
+        },
+
+        setSegmentsActive(v) {
+          this.segmentsActive = v;
+          this.save('segmentsActive', v);
+        },
+
+        restoreLength() {
+          const full = parseInt(this.icLength, 10);
+          if (!Number.isInteger(full) || full < 16 || full > 2048) { this.toast('Podaj pełną liczbę diod taśmy (16–2048).'); return; }
+          this.setSegmentsActive(false);
+          this.send([0x0f, full & 0xff, (full >> 8) & 0xff]);
+        },
+
+        // ---------- favourites ----------
+        groupName(g) {
+          const found = GROUPS.find(x => x.id === g);
+          return found ? found.name : 'typ ' + g;
+        },
+
+        get canSaveColor() {
+          return ['color', 'cct', 'wb'].includes(this.colorTab) && this.colorTabs.includes(this.colorTab);
+        },
+
+        colorPacket() {
+          if (this.colorTab === 'cct') return [0x03, 0, 0, 0, 0, this.cct, 1];
+          if (this.colorTab === 'wb') return [0x03, 0, 0, 0, this.wb, 0, 1];
+          const [r, g, b] = this.rgb;
+          return [0x03, r, g, b, 0, 0, 0];
+        },
+
+        colorSwatch() {
+          if (this.colorTab === 'cct') return 'rgb(255,255,' + this.cct + ')';
+          if (this.colorTab === 'wb') return 'rgb(' + this.wb + ',' + this.wb + ',' + this.wb + ')';
+          return this.rgbCss;
+        },
+
+        addColorFavorite() {
+          if (!this.canSaveColor) return;
+          const names = { color: 'Kolor', cct: 'Barwa bieli', wb: 'Biały' };
+          const value = this.colorTab === 'cct' ? this.cct : (this.colorTab === 'wb' ? this.wb : null);
+          this.pushFavorite({
+            kind: 'color',
+            name: names[this.colorTab] + (value === null ? ' ' + this.rgb.join(', ') : ' ' + value),
+            group: this.group,
+            colorTab: this.colorTab,
+            rgb: this.rgb.slice(),
+            hue: this.hue,
+            sat: this.sat,
+            cct: this.cct,
+            wb: this.wb,
+            brightness: this.brightness,
+            swatch: this.colorSwatch(),
+            packets: [this.colorPacket(), [0x02, this.brightness]]
+          });
+        },
+
+        addModeFavorite() {
+          const m = this.modeItems[this.modeIndex];
+          if (!m) return;
+          let scene;
+          if (this.isMagic) scene = MAGIC_SCENES[this.sceneTab];
+          else if (this.isTwoPath) scene = m.label;
+          else scene = RGB_SCENES[this.sceneTab];
+          const suffix = !this.isTwoPath && m.label ? ' ' + m.label : '';
+          this.pushFavorite({
+            kind: 'mode',
+            name: scene + suffix,
+            group: this.group,
+            sceneTab: this.sceneTab,
+            modeIndex: this.modeIndex,
+            speed: this.speed,
+            brightness: this.modeBrightness,
+            dots: m.dots.map(d => d.color),
+            packets: [[0x07].concat(m.head, [this.speed, this.modeBrightness], m.tail)]
+          });
+        },
+
+        addSegmentsFavorite() {
+          const err = this.segmentsError();
+          if (err) { this.toast(err); return; }
+          const names = CLASSIC_NAMES;
+          this.pushFavorite({
+            kind: 'segments',
+            name: 'Odcinki: ' + this.segments.slice().reverse().map(seg => names[seg.color]).join(', '),
+            group: this.group,
+            icLength: parseInt(this.icLength, 10),
+            segments: this.segments.map(seg => ({ color: seg.color, end: seg.end })),
+            brightness: this.brightness,
+            dots: this.segments.slice().reverse().map(seg => 'rgb(' + CLASSIC_RGB[seg.color].join(',') + ')')
+          });
+        },
+
+        pushFavorite(fav) {
+          fav.id = Date.now() + '-' + Math.floor(Math.random() * 1e6);
+          this.favorites.push(fav);
+          this.saveFavorites();
+          this.toast('Dodano do ulubionych: ' + fav.name);
+        },
+
+        saveFavorites() {
+          this.save('favorites', this.favorites);
+        },
+
+        removeFavorite(id) {
+          this.favorites = this.favorites.filter(f => f.id !== id);
+          this.saveFavorites();
+        },
+
+        favoriteDetails(f) {
+          const parts = [];
+          if (f.kind === 'mode') parts.push('prędkość ' + f.speed);
+          if (f.kind === 'segments') {
+            parts.push(f.segments.length + ' odcinki · ' + f.icLength + ' diod');
+            if (f.group !== this.group) parts.push(this.groupName(f.group));
+            return parts.join(' · ');
+          }
+          parts.push('jasność ' + f.brightness + '%');
+          if (f.group !== this.group) parts.push(this.groupName(f.group));
+          return parts.join(' · ');
+        },
+
+        async applyFavorite(f) {
+          if (f.kind === 'segments') {
+            this.tab = 'color';
+            if (this.colorTabs.includes('segments')) this.colorTab = 'segments';
+            this.icLength = f.icLength;
+            this.segments = f.segments.map(seg => ({ color: seg.color, end: seg.end }));
+            await this.applySegments();
+            return;
+          }
+          // Restore the UI only when the lamp type matches; the stored packets are sent either way.
+          if (f.group === this.group) {
+            if (f.kind === 'mode') {
+              this.tab = 'mode';
+              this.sceneTab = f.sceneTab;
+              this.modeIndex = f.modeIndex;
+              this.speed = f.speed;
+              this.modeBrightness = f.brightness;
+            } else {
+              this.tab = 'color';
+              this.colorTab = f.colorTab;
+              this.rgb = f.rgb.slice();
+              this.hue = f.hue;
+              this.sat = f.sat;
+              this.cct = f.cct;
+              this.wb = f.wb;
+              this.brightness = f.brightness;
+              this.presetIndex = -1;
+              this.saveSettings();
+              this.$nextTick(() => this.drawWheel());
+            }
+          }
+          this.power = true;
+          for (const p of f.packets) await this.send(p);
         },
 
         pickScene(i) {
@@ -1326,10 +1735,10 @@
         <template x-for="d in devices" :key="d.id">
           <div class="device">
             <input type="checkbox" :checked="d.selected" @change="toggleSelect(d); $event.target.checked = d.selected" title="Steruj tą lampą" style="width: 18px; height: 18px; accent-color: var(--clay);">
-            <span class="dot-state" :class="d.connected ? 'ok' : (d.connecting ? 'busy' : '')"></span>
+            <span class="dot-state" :class="d.connected ? 'ok' : (d.connecting || d.waiting ? 'busy' : '')"></span>
             <div style="flex: 1 1 auto; min-width: 0;">
               <div style="color: var(--slate); font-weight: 500;" x-text="d.name"></div>
-              <div style="font-size: 13px; color: var(--gray-500);" x-text="d.connected ? 'połączono' : (d.connecting ? 'łączenie…' : 'rozłączono')"></div>
+              <div style="font-size: 13px; color: var(--gray-500);" x-text="d.connected ? 'połączono' : (d.connecting ? 'łączenie…' : (d.waiting ? 'czekam na lampę, połączę automatycznie…' : 'rozłączono'))"></div>
             </div>
             <select class="field" style="width: auto; padding: 6px 10px; font-size: 13px;" :value="d.group === null ? '' : String(d.group)" @change="setGroup(d, $event.target.value)" title="Typ lampy">
               <option value="">typ: nieznany</option>
@@ -1343,9 +1752,34 @@
           </div>
         </template>
 
+        <p x-show="!autoConnectSupported" style="font-size: 13px; color: var(--gray-500); margin-top: 10px;">
+          Ta przeglądarka nie pamięta sparowanych lamp między wizytami. W Chrome włącz <code>chrome://flags/#enable-web-bluetooth-new-permissions-backend</code> i uruchom przeglądarkę ponownie, wtedy lampa połączy się sama po otwarciu strony.
+        </p>
         <p x-show="devices.length && !groupKnown" style="font-size: 13px; color: var(--gray-500); margin-top: 10px;">
           Przeglądarka nie zawsze udostępnia typ lampy z rozgłoszenia BLE. Jeśli go nie widać, wybierz typ ręcznie, aby dopasować dostępne funkcje (domyślnie Magic, adresowalna).
         </p>
+      </div>
+
+      <div class="surface" x-show="favorites.length">
+        <h3 style="margin-bottom: 6px;">Ulubione</h3>
+        <template x-for="f in favorites" :key="f.id">
+          <div class="device">
+            <template x-if="f.kind === 'color'">
+              <span class="chip" style="width: 28px; height: 28px; cursor: default;" :style="'background:' + f.swatch"></span>
+            </template>
+            <template x-if="f.kind === 'mode' || f.kind === 'segments'">
+              <span class="row" style="gap: 4px; width: 28px; flex-wrap: wrap;" :style="f.kind === 'segments' ? 'flex-direction: column; flex-wrap: nowrap;' : ''" :title="f.kind === 'segments' ? 'od góry do dołu' : ''">
+                <template x-for="(c, j) in f.dots" :key="j"><span class="cdot" :style="'background:' + c"></span></template>
+              </span>
+            </template>
+            <div style="flex: 1 1 auto; min-width: 0;">
+              <input class="field" style="padding: 4px 8px; border-color: transparent; background: transparent;" x-model="f.name" @change="saveFavorites()" title="Zmień nazwę">
+              <div style="font-size: 13px; color: var(--gray-500); padding-left: 9px;" x-text="favoriteDetails(f)"></div>
+            </div>
+            <button class="btn small primary" @click="applyFavorite(f)">Włącz</button>
+            <button class="btn small" @click="removeFavorite(f.id)" title="Usuń z ulubionych">✕</button>
+          </div>
+        </template>
       </div>
 
       <div class="segmented">
@@ -1377,9 +1811,9 @@
               </div>
               <div>
                 <div class="eyebrow" style="margin-bottom: 8px;">Klasyczne</div>
-                <div class="row" style="gap: 8px;">
-                  <template x-for="(c, i) in CLASSIC_RGB" :key="i">
-                    <div class="chip" :class="{ on: presetIndex === i }" :style="'background: rgb(' + c.join(',') + ')'" @click="pickPreset(i)"></div>
+                <div class="palette">
+                  <template x-for="i in PALETTE_ORDER" :key="i">
+                    <div class="chip" :class="{ on: presetIndex === i }" :style="'background: rgb(' + CLASSIC_RGB[i].join(',') + ')'" :title="CLASSIC_NAMES[i]" @click="pickPreset(i)"></div>
                   </template>
                 </div>
               </div>
@@ -1411,6 +1845,64 @@
           </div>
         </div>
 
+        <div x-show="colorTab === 'segments'" class="stack">
+          <p>Stałe kolory w częściach taśmy, bez animacji. Lampa nie ma polecenia dla pojedynczych diod, więc aplikacja maluje całą taśmę kolorem górnego odcinka, a potem skraca liczbę sterowanych diod i maluje kolejne odcinki w dół. Diody powyżej tej liczby zachowują swój kolor.</p>
+          <div style="width: 220px;">
+            <label class="eyebrow" style="display: block; margin-bottom: 6px;">Pełna liczba diod taśmy</label>
+            <input class="field" type="number" min="16" max="2048" x-model.number="icLength" placeholder="np. 72" @change="splitSegmentsEvenly()">
+          </div>
+          <table class="spec">
+            <thead><tr><th>Odcinek</th><th>Kolor</th><th title="Numer diody liczony od dołu lampy">Do diody</th><th></th></tr></thead>
+            <tbody>
+              <template x-for="i in segments.map((_, j) => j).reverse()" :key="i">
+                <tr x-data="{ get seg() { return segments[i]; } }">
+                  <td class="mono" x-text="(segments.length - i) + (i === segments.length - 1 ? ' (góra)' : (i === 0 ? ' (dół)' : ''))"></td>
+                  <td>
+                    <div class="palette small">
+                      <template x-for="ci in PALETTE_ORDER" :key="ci">
+                        <div class="chip" :class="{ on: seg.color === ci }" :style="'background: rgb(' + CLASSIC_RGB[ci].join(',') + ')'" :title="CLASSIC_NAMES[ci]" @click="seg.color = ci"></div>
+                      </template>
+                    </div>
+                  </td>
+                  <td style="width: 120px;">
+                    <template x-if="i < segments.length - 1">
+                      <input class="field" type="number" min="16" :max="icLength" x-model.number="seg.end" style="padding: 6px 10px;">
+                    </template>
+                    <template x-if="i === segments.length - 1">
+                      <span class="mono" x-text="icLength || '—'"></span>
+                    </template>
+                    <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px; white-space: nowrap;" x-text="segmentPercent(i)"></div>
+                  </td>
+                  <td style="text-align: right;">
+                    <div class="row" style="gap: 6px; justify-content: flex-end; flex-wrap: nowrap;">
+                      <button class="btn small primary" @click="applySegment(i)" :disabled="segmentsBusy || !!segmentsError()" title="Wyślij tylko ten odcinek">Zastosuj</button>
+                      <button class="btn small" x-show="segments.length > 2" @click="removeSegment(i)" title="Usuń odcinek">✕</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <div x-show="!segmentsError()">
+            <div class="eyebrow" style="margin-bottom: 6px;">Kroki, które zostaną wysłane</div>
+            <ol style="padding-left: 20px; font-size: 14px;">
+              <template x-for="(st, i) in segmentSteps()" :key="i">
+                <li><span x-text="st.label"></span> <code x-text="st.packets.map(p => p.map(b => b.toString(16).padStart(2, '0')).join(' ')).join('  ·  ')"></code></li>
+              </template>
+            </ol>
+          </div>
+          <p x-show="segmentsError()" style="font-size: 13px; color: var(--clay);" x-text="segmentsError()"></p>
+          <div class="row">
+            <button class="btn primary" @click="applySegments()" :disabled="segmentsBusy || !!segmentsError()" x-text="segmentsBusy ? 'Wysyłanie…' : 'Zastosuj wszystkie'"></button>
+            <button class="btn" @click="addSegment()" :disabled="segments.length >= 6">Dodaj odcinek</button>
+            <button class="btn" @click="splitSegmentsEvenly()">Podziel równo</button>
+            <button class="btn" @click="addSegmentsFavorite()" :disabled="!!segmentsError()">☆ Dodaj do ulubionych</button>
+            <button class="btn" @click="restoreLength()">Przywróć pełną długość</button>
+          </div>
+          <p style="font-size: 13px; color: var(--gray-500);">Najkrótszy dolny odcinek to 16 diod (limit sterownika). Po zabawie kliknij <strong>Przywróć pełną długość</strong>, inaczej tryby będą działać tylko na części taśmy.</p>
+          <p x-show="segmentsActive" style="font-size: 13px; color: var(--clay);">Liczba sterowanych diod jest teraz skrócona.</p>
+        </div>
+
         <div x-show="colorTab === 'motor'" class="stack">
           <label class="switch"><input type="checkbox" x-model="motorOn" @change="setMotor()"> Obrót włączony</label>
           <div class="slider-row">
@@ -1432,6 +1924,7 @@
           <label>Jasność <span x-text="brightness + '%'"></span></label>
           <input type="range" min="0" max="100" x-model.number="brightness" @input="setBrightness()" @change="saveSettings()">
         </div>
+        <div x-show="canSaveColor"><button class="btn" @click="addColorFavorite()">☆ Dodaj do ulubionych</button></div>
       </div>
 
       <!-- Modes -->
@@ -1461,6 +1954,7 @@
           <label>Jasność <span x-text="modeBrightness + '%'"></span></label>
           <input type="range" min="0" max="100" x-model.number="modeBrightness" @input="sendMode()">
         </div>
+        <div><button class="btn" @click="addModeFavorite()" :disabled="modeIndex < 0">☆ Dodaj do ulubionych</button></div>
         <p x-show="modeIndex < 0" style="font-size: 13px; color: var(--gray-500);">Wybierz efekt, aby go uruchomić. Suwaki zmieniają aktywny efekt.</p>
       </div>
 
