@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Raingel · sterowanie lampą</title>
+  <title>Raingel · lamp control</title>
   <style>
     :root {
       --ivory:    #FAF9F5;
@@ -444,16 +444,16 @@
     const COMPANY_ID = 22872;          // BuildConfig.APP_ID, manufacturer data = [group, type]
 
     const GROUPS = [
-      { id: 1,  name: 'Ściemniacz (DIM)' },
+      { id: 1,  name: 'Dimmer' },
       { id: 2,  name: 'CCT' },
       { id: 3,  name: 'RGB' },
       { id: 4,  name: 'RGBW' },
       { id: 5,  name: 'RGB + CCT (RGBC)' },
       { id: 6,  name: 'RGBCW' },
-      { id: 16, name: 'Magic (adresowalna)' },
-      { id: 17, name: 'Magic W, 2 tory' },
-      { id: 18, name: 'Magic C, 2 tory' },
-      { id: 19, name: 'Kula (silnik + laser)' },
+      { id: 16, name: 'Magic (addressable)' },
+      { id: 17, name: 'Magic W, 2 paths' },
+      { id: 18, name: 'Magic C, 2 paths' },
+      { id: 19, name: 'Sphere (motor + laser)' },
       { id: 20, name: 'Magic W' },
       { id: 21, name: 'Magic CW' }
     ];
@@ -468,12 +468,12 @@
       21: ['color', 'cct', 'segments']
     };
     const COLOR_TABS_DEFAULT = ['color', 'cct', 'wb'];
-    const COLOR_TAB_NAMES = { color: 'Kolor', cct: 'Barwa bieli', wb: 'Biały', motor: 'Silnik', laser: 'Gwiazdy', segments: 'Odcinki' };
+    const COLOR_TAB_NAMES = { color: 'Colour', cct: 'White temperature', wb: 'White', motor: 'Motor', laser: 'Stars', segments: 'Segments' };
 
     // Indexes are stored in saved segments and favourites, so new colours are only appended.
     // PALETTE_ORDER is the display order (rainbow, white last).
     const CLASSIC_RGB = [[255, 0, 0], [255, 0, 255], [0, 0, 255], [0, 255, 255], [0, 255, 0], [255, 255, 0], [255, 255, 255], [255, 128, 0], [255, 0, 128], [128, 0, 255], [0, 255, 128], [255, 64, 0], [255, 192, 0], [128, 255, 0], [0, 128, 255], [64, 0, 255]];
-    const CLASSIC_NAMES = ['czerwony', 'magenta', 'niebieski', 'cyjan', 'zielony', 'żółty', 'biały', 'pomarańczowy', 'różowy', 'purpurowy', 'morski', 'czerwono-pomarańczowy', 'bursztynowy', 'limonkowy', 'lazurowy', 'indygo'];
+    const CLASSIC_NAMES = ['red', 'magenta', 'blue', 'cyan', 'green', 'yellow', 'white', 'orange', 'pink', 'purple', 'spring green', 'red-orange', 'amber', 'lime', 'azure', 'indigo'];
     const PALETTE_ORDER = [0, 11, 7, 12, 5, 13, 4, 10, 3, 14, 2, 15, 9, 1, 8, 6];
 
     const DOT = {
@@ -481,8 +481,8 @@
       VT: '#8E4EC6', OR: '#F76B15', OG: '#F76B15', WT: '#FFFFFF'
     };
     const DOT_NAME = {
-      RD: 'czerwony', GN: 'zielony', BU: 'niebieski', YE: 'żółty', CYAN: 'cyjan',
-      VT: 'fioletowy', OR: 'pomarańczowy', OG: 'pomarańczowy', WT: 'biały'
+      RD: 'red', GN: 'green', BU: 'blue', YE: 'yellow', CYAN: 'cyan',
+      VT: 'violet', OR: 'orange', OG: 'orange', WT: 'white'
     };
 
     // R.array.mode_colors (magic), mode_rgb_colors, mode_sphere_colors
@@ -493,20 +493,20 @@
     // Mode.RGB_MODES / Mode.SPHERE_MODES: [colorId, colorValue, colorCount]
     const RGB_MODES = [[0, '67', 2], [1, '56', 2], [2, '45', 2], [3, '34', 2], [4, '23', 2], [5, '12', 2], [6, '01', 2], [7, '5670', 3], [8, '4560', 3], [9, '3450', 3], [10, '2340', 3], [11, '1230', 3], [12, '0120', 3], [13, '4567', 4], [14, '3456', 4], [15, '2345', 4], [16, '1234', 4], [17, '0123', 4], [18, '345670', 5], [19, '234560', 5], [20, '123450', 5], [21, '012340', 5], [22, '234567', 6], [23, '123456', 6], [24, '012345', 6], [25, '06314250', 7], [26, '12345670', 7], [27, '01234560', 7], [28, '06314257', 8], [29, '01234567', 8]];
     const SPHERE_MODES = [[0, '01000000', 2], [1, '02000000', 2], [2, '07000000', 2], [3, '12000000', 2], [4, '17000000', 2], [5, '27000000', 2], [6, '01200000', 3], [7, '01270000', 4]];
-    const RGB_SCENES = ['Przenikanie', 'Skok', 'Oddech', 'Błysk'];
+    const RGB_SCENES = ['Fade', 'Jump', 'Breathe', 'Flash'];
 
     // Mode.MAGIC_MODES: 18 scenes x 19 colour sets (colorValue indexed by colorId)
     const MAGIC_VALUES = ['0201000000', '0202000000', '0212000000', '0301200000', '0323400000', '0345600000', '0401230000', '0412340000', '0423450000', '0501234000', '0512345000', '0523456000', '0601234500', '0612345600', '0623456700', '0701234560', '0712345670', '0706314250', '0801234567'];
-    const MAGIC_SCENES = ['Przenikanie', 'Skok', 'Oddech', 'Błysk', 'Meteor', 'Stos', 'Pływanie', 'Reflektor', 'Fala', 'Woda', 'Tęcza', 'Mruganie', 'Odbicie', 'Wahadło', 'Migotanie', 'Wł./wył.', 'Kurtyna', 'Naprzemiennie'];
+    const MAGIC_SCENES = ['Fade', 'Jump', 'Breathe', 'Flash', 'Meteor', 'Stack', 'Float', 'Follow spot', 'Wave', 'Water', 'Rainbow', 'Blink', 'Bounce', 'Shuttle', 'Twinkle', 'On/off', 'Curtain', 'Alternate'];
 
     // Two-path scenes: new Mode(i + 200), no colour data
-    const TWO_PATH_SCENES = ['Auto', 'Wiele kolorów', 'Skok asynchr.', 'Przenikanie asynchr.', 'Skok', 'Przenikanie', 'Migotanie 1', 'Migotanie 2', 'Stroboskop 1', 'Stroboskop 2', 'Miganie', 'Oddech', 'WW miganie', 'WW oddech', 'RGBW skok', 'RGBW miganie', 'Fale'];
+    const TWO_PATH_SCENES = ['Auto', 'Multi colour', 'Async jump', 'Async fade', 'Jump', 'Fade', 'Twinkle 1', 'Twinkle 2', 'Strobe 1', 'Strobe 2', 'Flick', 'Breathe', 'WW flick', 'WW breathe', 'RGBW jump', 'RGBW flick', 'In waves'];
 
-    const RGB_EFFECTS = ['Klasyczny', 'Łagodny', 'Dynamiczny', 'Disco'];
-    const MAGIC_EFFECTS = ['Klasyczny', 'Przewijanie', 'Energia', 'Spektrum'];
+    const RGB_EFFECTS = ['Classic', 'Soft', 'Dynamic', 'Disco'];
+    const MAGIC_EFFECTS = ['Classic', 'Roll', 'Energy', 'Spectrum'];
     const MIC_COLORS = [[255, 0, 0], [255, 125, 0], [255, 255, 0], [0, 255, 0], [0, 0, 255], [0, 255, 255]];
     const IC_ORDERS = ['RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR'];
-    const WEEKDAYS = [['Pn', 1], ['Wt', 2], ['Śr', 4], ['Cz', 8], ['Pt', 16], ['So', 32], ['Nd', 64]];
+    const WEEKDAYS = [['Mon', 1], ['Tue', 2], ['Wed', 4], ['Thu', 8], ['Fri', 16], ['Sat', 32], ['Sun', 64]];
 
     function hexBytes(str) {
       const out = [];
@@ -538,11 +538,11 @@
             else if (id === 14) fmt = (id & 31) | (m.colorful << 6);
             else fmt = (id & 31) | (m.section << 7) | (m.direction << 6);
             let suffix = '';
-            if (id < 5) suffix = m.section === 0 ? '' : 'sekcjami';
-            else if (id < 12) suffix = m.direction === 0 ? 'naprzód' : 'wstecz';
-            else if (id === 14) suffix = m.colorful === 0 ? 'kolor' : 'wielokolor';
-            else if (id === 16) suffix = m.alternate === 0 ? '' : 'naprzemiennie';
-            else if (id === 17) suffix = m.status === 0 ? 'w górę' : 'w dół';
+            if (id < 5) suffix = m.section === 0 ? '' : 'by section';
+            else if (id < 12) suffix = m.direction === 0 ? 'forward' : 'reverse';
+            else if (id === 14) suffix = m.colorful === 0 ? 'colour' : 'multicolour';
+            else if (id === 16) suffix = m.alternate === 0 ? '' : 'alternate';
+            else if (id === 17) suffix = m.status === 0 ? 'curtain up' : 'curtain down';
             items.push({ dots: dotsOf(MAGIC_COLOR_NAMES[colorId]), label: suffix, head: [fmt], tail: hexBytes(value) });
           });
         });
@@ -637,6 +637,7 @@
         recording: false,
         level: 0,
         micColorIndex: 0,
+        micColor: -1,
 
         favorites: [],
         alarms: [],
@@ -657,6 +658,7 @@
           if (Number.isInteger(s.brightness)) this.brightness = s.brightness;
           if (Number.isInteger(s.icOrder)) this.icOrder = s.icOrder;
           if (Number.isInteger(s.icLength) && s.icLength >= 16) this.icLength = s.icLength;
+          if (Number.isInteger(s.micColor) && s.micColor >= -1 && s.micColor < CLASSIC_RGB.length) this.micColor = s.micColor;
           const segs = this.load('segments', null);
           if (Array.isArray(segs) && segs.length >= 2) this.segments = segs;
           this.segmentsActive = this.load('segmentsActive', false) === true;
@@ -694,7 +696,7 @@
           try { localStorage.setItem('raingel.' + key, JSON.stringify(value)); } catch (e) { /* storage unavailable */ }
         },
         saveSettings() {
-          this.save('settings', { brightness: this.brightness, icOrder: this.icOrder, icLength: this.icLength });
+          this.save('settings', { brightness: this.brightness, icOrder: this.icOrder, icLength: this.icLength, micColor: this.micColor });
         },
 
         toast(text, ms) {
@@ -725,7 +727,7 @@
 
         async addDevice() {
           if (!this.supported) {
-            this.toast('Ta przeglądarka nie obsługuje Web Bluetooth.');
+            this.toast('This browser does not support Web Bluetooth.');
             return;
           }
           let device;
@@ -734,10 +736,10 @@
           } catch (e) {
             if (e && e.name === 'NotFoundError') return;
             if (this.isPermissionBlocked(e)) {
-              this.toast('Dostęp do Bluetooth jest zablokowany. Kliknij ikonę obok adresu strony → Ustawienia witryny → Urządzenia Bluetooth: Zezwalaj, potem przeładuj stronę.', 8000);
+              this.toast('Bluetooth access is blocked. Click the icon next to the address bar → Site settings → Bluetooth devices: Allow, then reload the page.', 8000);
               return;
             }
-            this.toast('Nie udało się wybrać urządzenia: ' + (e && e.message ? e.message : e));
+            this.toast('Could not select the device: ' + (e && e.message ? e.message : e));
             return;
           }
           this.registerDevice(device);
@@ -752,7 +754,7 @@
           const saved = this.load('group.' + device.id, null);
           this.devices.push({
             id: device.id,
-            name: device.name || 'Lampa',
+            name: device.name || 'Lamp',
             connected: false,
             connecting: false,
             waiting: false,
@@ -859,7 +861,7 @@
           } catch (e) {
             d.connected = false;
             link.char = null;
-            if (!silent) this.toast('Błąd połączenia z ' + d.name + ': ' + (e && e.message ? e.message : e));
+            if (!silent) this.toast('Connection to ' + d.name + ' failed: ' + (e && e.message ? e.message : e));
             return false;
           } finally {
             d.connecting = false;
@@ -907,7 +909,7 @@
           }
           const first = this.selectedDevices[0];
           if (first && first.group && d.group && first.group !== d.group) {
-            this.toast('Razem można sterować tylko lampami tego samego typu.');
+            this.toast('Only lamps of the same type can be controlled together.');
             return;
           }
           d.selected = true;
@@ -961,7 +963,7 @@
             else if (c.writeValueWithResponse) await c.writeValueWithResponse(data);
             else await c.writeValue(data);
           }).catch(e => {
-            this.pushLog('błąd zapisu: ' + (e && e.message ? e.message : e), true);
+            this.pushLog('write error: ' + (e && e.message ? e.message : e), true);
           });
           return link.chain;
         },
@@ -983,7 +985,7 @@
           }
           this.pushLog(toHex(bytes), targets.length === 0);
           if (!targets.length) {
-            if (!this.toastText) this.toast(this.devices.length ? 'Zaznacz połączoną lampę.' : 'Najpierw połącz lampę.');
+            if (!this.toastText) this.toast(this.devices.length ? 'Select a connected lamp.' : 'Connect a lamp first.');
             return;
           }
           await Promise.all(targets.map(d => this.writeTo(d.id, bytes, confirmed)));
@@ -1202,7 +1204,7 @@
           const bottomEnd = bottom.end === null ? full : parseInt(bottom.end, 10) || 0;
           const end = Math.max(16, Math.round(bottomEnd / 2));
           if (end >= bottomEnd) {
-            this.toast('Dolny odcinek jest za krótki, żeby go podzielić (minimum 16 diod na dole).');
+            this.toast('The bottom segment is too short to split (at least 16 LEDs at the bottom).');
             return;
           }
           const pos = PALETTE_ORDER.indexOf(bottom.color);
@@ -1229,7 +1231,7 @@
             if (rest > 0) { pct[j]++; rest--; }
           });
           const upTo = pct.slice(0, i + 1).reduce((x, y) => x + y, 0);
-          return 'do ' + upTo + '% · odcinek ' + pct[i] + '%';
+          return 'up to ' + upTo + '% · segment ' + pct[i] + '%';
         },
 
         // Removing a segment lets its neighbour take the space; other boundaries stay unchanged.
@@ -1242,13 +1244,13 @@
 
         segmentsError() {
           const full = parseInt(this.icLength, 10);
-          if (!Number.isInteger(full) || full < 16 || full > 2048) return 'Podaj pełną liczbę diod taśmy (16–2048).';
+          if (!Number.isInteger(full) || full < 16 || full > 2048) return 'Enter the full LED count of the strip (16–2048).';
           let prev = 0;
           for (let i = 0; i < this.segments.length - 1; i++) {
             const end = parseInt(this.segments[i].end, 10);
-            if (!Number.isInteger(end) || end < 16) return 'Odcinek ' + (this.segments.length - i) + ': koniec musi być co najmniej na diodzie 16.';
-            if (end <= prev) return 'Odcinek ' + (this.segments.length - i) + ': granica musi być wyżej niż granica odcinka pod nim.';
-            if (end >= full) return 'Odcinek ' + (this.segments.length - i) + ': koniec musi być mniejszy niż pełna liczba diod (' + full + ').';
+            if (!Number.isInteger(end) || end < 16) return 'Segment ' + (this.segments.length - i) + ': the boundary must be at LED 16 or higher.';
+            if (end <= prev) return 'Segment ' + (this.segments.length - i) + ': the boundary must be above the segment below it.';
+            if (end >= full) return 'Segment ' + (this.segments.length - i) + ': the boundary must be below the full LED count (' + full + ').';
             prev = end;
           }
           return '';
@@ -1286,7 +1288,7 @@
             const end = i === k - 1 ? full : parseInt(seg.end, 10) || 0;
             return {
               index: i,
-              label: 'diody 1–' + end + ': ' + names[seg.color],
+              label: 'LEDs 1–' + end + ': ' + names[seg.color],
               packets: [[0x0f, end & 0xff, (end >> 8) & 0xff], [0x03].concat(CLASSIC_RGB[seg.color], [0, 0, 0])]
             };
           });
@@ -1314,7 +1316,7 @@
 
         restoreLength() {
           const full = parseInt(this.icLength, 10);
-          if (!Number.isInteger(full) || full < 16 || full > 2048) { this.toast('Podaj pełną liczbę diod taśmy (16–2048).'); return; }
+          if (!Number.isInteger(full) || full < 16 || full > 2048) { this.toast('Enter the full LED count of the strip (16–2048).'); return; }
           this.setSegmentsActive(false);
           this.send([0x0f, full & 0xff, (full >> 8) & 0xff]);
         },
@@ -1322,7 +1324,7 @@
         // ---------- favourites ----------
         groupName(g) {
           const found = GROUPS.find(x => x.id === g);
-          return found ? found.name : 'typ ' + g;
+          return found ? found.name : 'type ' + g;
         },
 
         get canSaveColor() {
@@ -1344,7 +1346,7 @@
 
         addColorFavorite() {
           if (!this.canSaveColor) return;
-          const names = { color: 'Kolor', cct: 'Barwa bieli', wb: 'Biały' };
+          const names = { color: 'Colour', cct: 'White temperature', wb: 'White' };
           const value = this.colorTab === 'cct' ? this.cct : (this.colorTab === 'wb' ? this.wb : null);
           this.pushFavorite({
             kind: 'color',
@@ -1389,7 +1391,7 @@
           const names = CLASSIC_NAMES;
           this.pushFavorite({
             kind: 'segments',
-            name: 'Odcinki: ' + this.segments.slice().reverse().map(seg => names[seg.color]).join(', '),
+            name: 'Segments: ' + this.segments.slice().reverse().map(seg => names[seg.color]).join(', '),
             group: this.group,
             icLength: parseInt(this.icLength, 10),
             segments: this.segments.map(seg => ({ color: seg.color, end: seg.end })),
@@ -1402,7 +1404,7 @@
           fav.id = Date.now() + '-' + Math.floor(Math.random() * 1e6);
           this.favorites.push(fav);
           this.saveFavorites();
-          this.toast('Dodano do ulubionych: ' + fav.name);
+          this.toast('Added to favourites: ' + fav.name);
         },
 
         saveFavorites() {
@@ -1416,13 +1418,13 @@
 
         favoriteDetails(f) {
           const parts = [];
-          if (f.kind === 'mode') parts.push('prędkość ' + f.speed);
+          if (f.kind === 'mode') parts.push('speed ' + f.speed);
           if (f.kind === 'segments') {
-            parts.push(f.segments.length + ' odcinki · ' + f.icLength + ' diod');
+            parts.push(f.segments.length + ' segments · ' + f.icLength + ' LEDs');
             if (f.group !== this.group) parts.push(this.groupName(f.group));
             return parts.join(' · ');
           }
-          parts.push('jasność ' + f.brightness + '%');
+          parts.push('brightness ' + f.brightness + '%');
           if (f.group !== this.group) parts.push(this.groupName(f.group));
           return parts.join(' · ');
         },
@@ -1507,13 +1509,13 @@
         async startPhoneMic() {
           if (this.recording) return;
           if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            this.toast('Przeglądarka nie udostępnia mikrofonu.');
+            this.toast('The browser does not provide a microphone.');
             return;
           }
           try {
             mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
           } catch (e) {
-            this.toast('Brak dostępu do mikrofonu.');
+            this.toast('No access to the microphone.');
             return;
           }
           const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -1539,9 +1541,20 @@
           let vol = mean > 0 ? Math.floor(20 * Math.log10(mean) * 2.55) : 0;
           vol = Math.max(0, Math.min(255, vol));
           this.level = Math.round(vol / 255 * 100);
-          const c = MIC_COLORS[this.micColorIndex];
+          const c = this.currentMicColor();
           this.micColorIndex = (this.micColorIndex + 1) % 6;
           this.sendLatest('phone', [0x10, c[0], c[1], c[2], 0, 0, vol, this.micEffect]);
+        },
+
+        // Phone microphone frames carry their own RGB, so the rhythm can use one fixed colour
+        // (micColor = palette index) or rotate like the original app (micColor = -1).
+        currentMicColor() {
+          return this.micColor >= 0 ? CLASSIC_RGB[this.micColor] : MIC_COLORS[this.micColorIndex];
+        },
+
+        setMicColor(i) {
+          this.micColor = i;
+          this.saveSettings();
         },
 
         stopPhoneMic() {
@@ -1555,7 +1568,7 @@
           mic.analyser = null;
           this.recording = false;
           this.level = 0;
-          const c = MIC_COLORS[this.micColorIndex];
+          const c = this.currentMicColor();
           this.sendLatest('phone', [0x10, c[0], c[1], c[2], 0, 0, 0, this.micEffect]);
         },
 
@@ -1563,9 +1576,9 @@
         pad(n) { return String(n).padStart(2, '0'); },
 
         weeksText(w) {
-          if (w === 0) return 'bez powtarzania';
-          if (w === 127) return 'codziennie';
-          if (w === 31) return 'dni robocze';
+          if (w === 0) return 'no repeat';
+          if (w === 127) return 'every day';
+          if (w === 31) return 'weekdays';
           if (w === 96) return 'weekend';
           return WEEKDAYS.filter(([, bit]) => w & bit).map(([n]) => n).join(' ');
         },
@@ -1589,7 +1602,7 @@
           const f = this.alarmForm;
           const m = /^(\d{1,2}):(\d{2})/.exec(f.time || '');
           if (!m) {
-            this.toast('Podaj godzinę.');
+            this.toast('Enter the time.');
             return;
           }
           const a = { hour: Math.min(23, parseInt(m[1], 10)), minute: Math.min(59, parseInt(m[2], 10)), weeks: f.weeks, on: f.on, enable: f.enable };
@@ -1633,7 +1646,7 @@
           const hour = Math.max(0, Math.min(23, parseInt(f.hour, 10) || 0));
           const minute = Math.max(0, Math.min(59, parseInt(f.minute, 10) || 0));
           if (hour === 0 && minute === 0) {
-            this.toast('Ustaw co najmniej 1 minutę.');
+            this.toast('Set at least 1 minute.');
             return;
           }
           this.delay = { hour, minute, enable: !!f.enable };
@@ -1672,7 +1685,7 @@
         sendIcLength() {
           const n = parseInt(this.icLength, 10);
           if (!Number.isInteger(n) || n < 16 || n > 2048) {
-            this.toast('Liczba diod musi być w zakresie 16–2048.');
+            this.toast('The LED count must be between 16 and 2048.');
             return;
           }
           this.icLength = n;
@@ -1697,12 +1710,12 @@
       <div class="eyebrow" style="margin-bottom: 12px;">Raingel · Bluetooth LE</div>
       <div class="row" style="justify-content: space-between; gap: 20px; align-items: flex-start;">
         <div style="flex: 1 1 320px;">
-          <h1 style="margin-bottom: 12px;">Sterowanie lampą</h1>
+          <h1 style="margin-bottom: 12px;">Lamp control</h1>
           <p style="max-width: 60ch;">
-            Połącz lampę lub taśmę LED obsługiwaną przez aplikację Raingel i steruj kolorem, trybami, rytmem muzyki oraz harmonogramem prosto z przeglądarki.
+            Connect a lamp or LED strip made for the Raingel app and control colour, modes, music rhythm and schedules from the browser.
           </p>
         </div>
-        <button class="power" :class="{ on: power }" @click="togglePower()" :title="power ? 'Wyłącz' : 'Włącz'" aria-label="Zasilanie">
+        <button class="power" :class="{ on: power }" @click="togglePower()" :title="power ? 'Turn off' : 'Turn on'" aria-label="Power">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.2 6.6a8 8 0 1 0 11.6 0"/></svg>
         </button>
       </div>
@@ -1714,80 +1727,80 @@
 
       <template x-if="!supported || !secure">
         <blockquote>
-          <span x-show="!secure">Strona musi być otwarta przez <code>https://</code> albo <code>localhost</code>, inaczej Web Bluetooth jest niedostępny. </span>
-          <span x-show="supported === false">Ta przeglądarka nie obsługuje Web Bluetooth. Użyj Chrome, Edge lub Opery na komputerze albo Androidzie.</span>
+          <span x-show="!secure">The page must be opened via <code>https://</code> or <code>localhost</code>, otherwise Web Bluetooth is not available. </span>
+          <span x-show="supported === false">This browser does not support Web Bluetooth. Use Chrome, Edge or Opera on desktop or Android.</span>
         </blockquote>
       </template>
 
       <div class="surface">
         <div class="row" style="justify-content: space-between; margin-bottom: 6px;">
-          <h3>Urządzenia</h3>
+          <h3>Devices</h3>
           <div class="row">
-            <span class="pill" :class="connectedCount ? 'ok' : ''" x-text="connectedCount + ' połączonych'"></span>
-            <button class="btn primary" @click="addDevice()" :disabled="!supported">Dodaj lampę</button>
+            <span class="pill" :class="connectedCount ? 'ok' : ''" x-text="connectedCount + ' connected'"></span>
+            <button class="btn primary" @click="addDevice()" :disabled="!supported">Add lamp</button>
           </div>
         </div>
 
         <p x-show="!devices.length" style="color: var(--gray-500); margin-top: 8px;">
-          Brak urządzeń. Włącz lampę, kliknij <strong>Dodaj lampę</strong> i wybierz ją z listy.
+          No devices. Turn the lamp on, click <strong>Add lamp</strong> and pick it from the list.
         </p>
 
         <template x-for="d in devices" :key="d.id">
           <div class="device">
-            <input type="checkbox" :checked="d.selected" @change="toggleSelect(d); $event.target.checked = d.selected" title="Steruj tą lampą" style="width: 18px; height: 18px; accent-color: var(--clay);">
+            <input type="checkbox" :checked="d.selected" @change="toggleSelect(d); $event.target.checked = d.selected" title="Control this lamp" style="width: 18px; height: 18px; accent-color: var(--clay);">
             <span class="dot-state" :class="d.connected ? 'ok' : (d.connecting || d.waiting ? 'busy' : '')"></span>
             <div style="flex: 1 1 auto; min-width: 0;">
               <div style="color: var(--slate); font-weight: 500;" x-text="d.name"></div>
-              <div style="font-size: 13px; color: var(--gray-500);" x-text="d.connected ? 'połączono' : (d.connecting ? 'łączenie…' : (d.waiting ? 'czekam na lampę, połączę automatycznie…' : 'rozłączono'))"></div>
+              <div style="font-size: 13px; color: var(--gray-500);" x-text="d.connected ? 'connected' : (d.connecting ? 'connecting…' : (d.waiting ? 'waiting for the lamp, will connect automatically…' : 'disconnected'))"></div>
             </div>
-            <select class="field" style="width: auto; padding: 6px 10px; font-size: 13px;" :value="d.group === null ? '' : String(d.group)" @change="setGroup(d, $event.target.value)" title="Typ lampy">
-              <option value="">typ: nieznany</option>
+            <select class="field" style="width: auto; padding: 6px 10px; font-size: 13px;" :value="d.group === null ? '' : String(d.group)" @change="setGroup(d, $event.target.value)" title="Lamp type">
+              <option value="">type: unknown</option>
               <template x-for="g in GROUPS" :key="g.id">
                 <option :value="String(g.id)" x-text="g.name" :selected="d.group === g.id"></option>
               </template>
             </select>
-            <button class="btn small" x-show="!d.connected" :disabled="d.connecting" @click="connect(d.id)">Połącz</button>
-            <button class="btn small" x-show="d.connected" @click="disconnect(d.id)">Rozłącz</button>
-            <button class="btn small" @click="forget(d.id)" title="Usuń z listy">✕</button>
+            <button class="btn small" x-show="!d.connected" :disabled="d.connecting" @click="connect(d.id)">Connect</button>
+            <button class="btn small" x-show="d.connected" @click="disconnect(d.id)">Disconnect</button>
+            <button class="btn small" @click="forget(d.id)" title="Remove from list">✕</button>
           </div>
         </template>
 
         <p x-show="!autoConnectSupported" style="font-size: 13px; color: var(--gray-500); margin-top: 10px;">
-          Ta przeglądarka nie pamięta sparowanych lamp między wizytami. W Chrome włącz <code>chrome://flags/#enable-web-bluetooth-new-permissions-backend</code> i uruchom przeglądarkę ponownie, wtedy lampa połączy się sama po otwarciu strony.
+          This browser does not remember paired lamps between visits. In Chrome enable <code>chrome://flags/#enable-web-bluetooth-new-permissions-backend</code> and restart the browser, then the lamp connects by itself when the page opens.
         </p>
         <p x-show="devices.length && !groupKnown" style="font-size: 13px; color: var(--gray-500); margin-top: 10px;">
-          Przeglądarka nie zawsze udostępnia typ lampy z rozgłoszenia BLE. Jeśli go nie widać, wybierz typ ręcznie, aby dopasować dostępne funkcje (domyślnie Magic, adresowalna).
+          The browser does not always expose the lamp type from the BLE advertisement. If it is missing, pick the type by hand to match the available features (default: Magic, addressable).
         </p>
       </div>
 
       <div class="surface" x-show="favorites.length">
-        <h3 style="margin-bottom: 6px;">Ulubione</h3>
+        <h3 style="margin-bottom: 6px;">Favourites</h3>
         <template x-for="f in favorites" :key="f.id">
           <div class="device">
             <template x-if="f.kind === 'color'">
               <span class="chip" style="width: 28px; height: 28px; cursor: default;" :style="'background:' + f.swatch"></span>
             </template>
             <template x-if="f.kind === 'mode' || f.kind === 'segments'">
-              <span class="row" style="gap: 4px; width: 28px; flex-wrap: wrap;" :style="f.kind === 'segments' ? 'flex-direction: column; flex-wrap: nowrap;' : ''" :title="f.kind === 'segments' ? 'od góry do dołu' : ''">
+              <span class="row" style="gap: 4px; width: 28px; flex-wrap: wrap;" :style="f.kind === 'segments' ? 'flex-direction: column; flex-wrap: nowrap;' : ''" :title="f.kind === 'segments' ? 'top to bottom' : ''">
                 <template x-for="(c, j) in f.dots" :key="j"><span class="cdot" :style="'background:' + c"></span></template>
               </span>
             </template>
             <div style="flex: 1 1 auto; min-width: 0;">
-              <input class="field" style="padding: 4px 8px; border-color: transparent; background: transparent;" x-model="f.name" @change="saveFavorites()" title="Zmień nazwę">
+              <input class="field" style="padding: 4px 8px; border-color: transparent; background: transparent;" x-model="f.name" @change="saveFavorites()" title="Rename">
               <div style="font-size: 13px; color: var(--gray-500); padding-left: 9px;" x-text="favoriteDetails(f)"></div>
             </div>
-            <button class="btn small primary" @click="applyFavorite(f)">Włącz</button>
-            <button class="btn small" @click="removeFavorite(f.id)" title="Usuń z ulubionych">✕</button>
+            <button class="btn small primary" @click="applyFavorite(f)">Apply</button>
+            <button class="btn small" @click="removeFavorite(f.id)" title="Remove from favourites">✕</button>
           </div>
         </template>
       </div>
 
       <div class="segmented">
-        <button :class="{ on: tab === 'color' }" @click="tab = 'color'">Kolor</button>
-        <button :class="{ on: tab === 'mode' }" @click="tab = 'mode'">Tryby</button>
-        <button :class="{ on: tab === 'rhythm' }" @click="tab = 'rhythm'">Rytm</button>
-        <button :class="{ on: tab === 'timer' }" @click="tab = 'timer'">Harmonogram</button>
-        <button :class="{ on: tab === 'settings' }" @click="tab = 'settings'">Ustawienia</button>
+        <button :class="{ on: tab === 'color' }" @click="tab = 'color'">Colour</button>
+        <button :class="{ on: tab === 'mode' }" @click="tab = 'mode'">Modes</button>
+        <button :class="{ on: tab === 'rhythm' }" @click="tab = 'rhythm'">Rhythm</button>
+        <button :class="{ on: tab === 'timer' }" @click="tab = 'timer'">Schedule</button>
+        <button :class="{ on: tab === 'settings' }" @click="tab = 'settings'">Settings</button>
       </div>
 
       <!-- Colour -->
@@ -1805,12 +1818,12 @@
               <div class="row">
                 <div class="preview" :style="'background:' + rgbCss"></div>
                 <div>
-                  <div class="eyebrow">Wybrany kolor</div>
+                  <div class="eyebrow">Selected colour</div>
                   <code x-text="'R ' + rgb[0] + ' · G ' + rgb[1] + ' · B ' + rgb[2]"></code>
                 </div>
               </div>
               <div>
-                <div class="eyebrow" style="margin-bottom: 8px;">Klasyczne</div>
+                <div class="eyebrow" style="margin-bottom: 8px;">Presets</div>
                 <div class="palette">
                   <template x-for="i in PALETTE_ORDER" :key="i">
                     <div class="chip" :class="{ on: presetIndex === i }" :style="'background: rgb(' + CLASSIC_RGB[i].join(',') + ')'" :title="CLASSIC_NAMES[i]" @click="pickPreset(i)"></div>
@@ -1823,7 +1836,7 @@
 
         <div x-show="colorTab === 'cct'" class="stack">
           <div class="slider-row">
-            <label>Barwa: ciepła → zimna <span x-text="cct"></span></label>
+            <label>Temperature: warm → cold <span x-text="cct"></span></label>
             <input type="range" class="cct" min="0" max="255" x-model.number="cct" @input="sendCct()">
           </div>
           <div class="row" style="gap: 8px;">
@@ -1835,7 +1848,7 @@
 
         <div x-show="colorTab === 'wb'" class="stack">
           <div class="slider-row">
-            <label>Kanał biały <span x-text="wb"></span></label>
+            <label>White channel <span x-text="wb"></span></label>
             <input type="range" class="wb" min="0" max="255" x-model.number="wb" @input="sendWb()">
           </div>
           <div class="row" style="gap: 8px;">
@@ -1846,17 +1859,17 @@
         </div>
 
         <div x-show="colorTab === 'segments'" class="stack">
-          <p>Stałe kolory w częściach taśmy, bez animacji. Lampa nie ma polecenia dla pojedynczych diod, więc aplikacja maluje całą taśmę kolorem górnego odcinka, a potem skraca liczbę sterowanych diod i maluje kolejne odcinki w dół. Diody powyżej tej liczby zachowują swój kolor.</p>
+          <p>Fixed colours on parts of the strip, without animation. The lamp has no per-LED command, so the app paints the whole strip with the top colour, then shrinks the number of controlled LEDs and paints the next segments downwards. LEDs above that number keep their colour.</p>
           <div style="width: 220px;">
-            <label class="eyebrow" style="display: block; margin-bottom: 6px;">Pełna liczba diod taśmy</label>
-            <input class="field" type="number" min="16" max="2048" x-model.number="icLength" placeholder="np. 72" @change="splitSegmentsEvenly()">
+            <label class="eyebrow" style="display: block; margin-bottom: 6px;">Full LED count of the strip</label>
+            <input class="field" type="number" min="16" max="2048" x-model.number="icLength" placeholder="e.g. 84" @change="splitSegmentsEvenly()">
           </div>
           <table class="spec">
-            <thead><tr><th>Odcinek</th><th>Kolor</th><th title="Numer diody liczony od dołu lampy">Do diody</th><th></th></tr></thead>
+            <thead><tr><th>Segment</th><th>Colour</th><th title="LED number counted from the bottom of the lamp">Up to LED</th><th></th></tr></thead>
             <tbody>
               <template x-for="i in segments.map((_, j) => j).reverse()" :key="i">
                 <tr x-data="{ get seg() { return segments[i]; } }">
-                  <td class="mono" x-text="(segments.length - i) + (i === segments.length - 1 ? ' (góra)' : (i === 0 ? ' (dół)' : ''))"></td>
+                  <td class="mono" x-text="(segments.length - i) + (i === segments.length - 1 ? ' (top)' : (i === 0 ? ' (bottom)' : ''))"></td>
                   <td>
                     <div class="palette small">
                       <template x-for="ci in PALETTE_ORDER" :key="ci">
@@ -1875,8 +1888,8 @@
                   </td>
                   <td style="text-align: right;">
                     <div class="row" style="gap: 6px; justify-content: flex-end; flex-wrap: nowrap;">
-                      <button class="btn small primary" @click="applySegment(i)" :disabled="segmentsBusy || !!segmentsError()" title="Wyślij tylko ten odcinek">Zastosuj</button>
-                      <button class="btn small" x-show="segments.length > 2" @click="removeSegment(i)" title="Usuń odcinek">✕</button>
+                      <button class="btn small primary" @click="applySegment(i)" :disabled="segmentsBusy || !!segmentsError()" title="Send only this segment">Apply</button>
+                      <button class="btn small" x-show="segments.length > 2" @click="removeSegment(i)" title="Remove segment">✕</button>
                     </div>
                   </td>
                 </tr>
@@ -1884,7 +1897,7 @@
             </tbody>
           </table>
           <div x-show="!segmentsError()">
-            <div class="eyebrow" style="margin-bottom: 6px;">Kroki, które zostaną wysłane</div>
+            <div class="eyebrow" style="margin-bottom: 6px;">Steps to be sent</div>
             <ol style="padding-left: 20px; font-size: 14px;">
               <template x-for="(st, i) in segmentSteps()" :key="i">
                 <li><span x-text="st.label"></span> <code x-text="st.packets.map(p => p.map(b => b.toString(16).padStart(2, '0')).join(' ')).join('  ·  ')"></code></li>
@@ -1893,38 +1906,38 @@
           </div>
           <p x-show="segmentsError()" style="font-size: 13px; color: var(--clay);" x-text="segmentsError()"></p>
           <div class="row">
-            <button class="btn primary" @click="applySegments()" :disabled="segmentsBusy || !!segmentsError()" x-text="segmentsBusy ? 'Wysyłanie…' : 'Zastosuj wszystkie'"></button>
-            <button class="btn" @click="addSegment()" :disabled="segments.length >= 6">Dodaj odcinek</button>
-            <button class="btn" @click="splitSegmentsEvenly()">Podziel równo</button>
-            <button class="btn" @click="addSegmentsFavorite()" :disabled="!!segmentsError()">☆ Dodaj do ulubionych</button>
-            <button class="btn" @click="restoreLength()">Przywróć pełną długość</button>
+            <button class="btn primary" @click="applySegments()" :disabled="segmentsBusy || !!segmentsError()" x-text="segmentsBusy ? 'Sending…' : 'Apply all'"></button>
+            <button class="btn" @click="addSegment()" :disabled="segments.length >= 6">Add segment</button>
+            <button class="btn" @click="splitSegmentsEvenly()">Split evenly</button>
+            <button class="btn" @click="addSegmentsFavorite()" :disabled="!!segmentsError()">☆ Add to favourites</button>
+            <button class="btn" @click="restoreLength()">Restore full length</button>
           </div>
-          <p style="font-size: 13px; color: var(--gray-500);">Najkrótszy dolny odcinek to 16 diod (limit sterownika). Po zabawie kliknij <strong>Przywróć pełną długość</strong>, inaczej tryby będą działać tylko na części taśmy.</p>
-          <p x-show="segmentsActive" style="font-size: 13px; color: var(--clay);">Liczba sterowanych diod jest teraz skrócona.</p>
+          <p style="font-size: 13px; color: var(--gray-500);">The shortest bottom segment is 16 LEDs (controller limit). When done, click <strong>Restore full length</strong>, otherwise modes only run on part of the strip. Any other colour, mode or power command also restores it.</p>
+          <p x-show="segmentsActive" style="font-size: 13px; color: var(--clay);">The number of controlled LEDs is currently shortened.</p>
         </div>
 
         <div x-show="colorTab === 'motor'" class="stack">
-          <label class="switch"><input type="checkbox" x-model="motorOn" @change="setMotor()"> Obrót włączony</label>
+          <label class="switch"><input type="checkbox" x-model="motorOn" @change="setMotor()"> Rotation on</label>
           <div class="slider-row">
-            <label>Prędkość <span x-text="motorSpeed"></span></label>
+            <label>Speed <span x-text="motorSpeed"></span></label>
             <input type="range" min="0" max="100" x-model.number="motorSpeed" @input="motorOn = true; setMotor()">
           </div>
         </div>
 
         <div x-show="colorTab === 'laser'" class="stack">
-          <label class="switch"><input type="checkbox" x-model="laserOn" @change="setLaser()"> Gwiazdy (laser) włączone</label>
+          <label class="switch"><input type="checkbox" x-model="laserOn" @change="setLaser()"> Stars (laser) on</label>
           <div class="slider-row">
-            <label>Prędkość <span x-text="laserSpeed"></span></label>
+            <label>Speed <span x-text="laserSpeed"></span></label>
             <input type="range" min="0" max="100" x-model.number="laserSpeed" @input="laserOn = true; setLaser()">
           </div>
         </div>
 
         <hr>
         <div class="slider-row">
-          <label>Jasność <span x-text="brightness + '%'"></span></label>
+          <label>Brightness <span x-text="brightness + '%'"></span></label>
           <input type="range" min="0" max="100" x-model.number="brightness" @input="setBrightness()" @change="saveSettings()">
         </div>
-        <div x-show="canSaveColor"><button class="btn" @click="addColorFavorite()">☆ Dodaj do ulubionych</button></div>
+        <div x-show="canSaveColor"><button class="btn" @click="addColorFavorite()">☆ Add to favourites</button></div>
       </div>
 
       <!-- Modes -->
@@ -1947,26 +1960,26 @@
         </div>
 
         <div class="slider-row">
-          <label>Prędkość <span x-text="speed"></span></label>
+          <label>Speed <span x-text="speed"></span></label>
           <input type="range" min="0" max="100" x-model.number="speed" @input="sendMode()">
         </div>
         <div class="slider-row">
-          <label>Jasność <span x-text="modeBrightness + '%'"></span></label>
+          <label>Brightness <span x-text="modeBrightness + '%'"></span></label>
           <input type="range" min="0" max="100" x-model.number="modeBrightness" @input="sendMode()">
         </div>
-        <div><button class="btn" @click="addModeFavorite()" :disabled="modeIndex < 0">☆ Dodaj do ulubionych</button></div>
-        <p x-show="modeIndex < 0" style="font-size: 13px; color: var(--gray-500);">Wybierz efekt, aby go uruchomić. Suwaki zmieniają aktywny efekt.</p>
+        <div><button class="btn" @click="addModeFavorite()" :disabled="modeIndex < 0">☆ Add to favourites</button></div>
+        <p x-show="modeIndex < 0" style="font-size: 13px; color: var(--gray-500);">Pick an effect to start it. The sliders change the active effect.</p>
       </div>
 
       <!-- Rhythm -->
       <div x-show="tab === 'rhythm'" class="surface stack">
         <div class="segmented small">
-          <button :class="{ on: micSource === 'device' }" @click="setMicSource('device')">Mikrofon lampy</button>
-          <button :class="{ on: micSource === 'phone' }" @click="setMicSource('phone')">Mikrofon tego urządzenia</button>
+          <button :class="{ on: micSource === 'device' }" @click="setMicSource('device')">Lamp microphone</button>
+          <button :class="{ on: micSource === 'phone' }" @click="setMicSource('phone')">This device's microphone</button>
         </div>
 
         <div>
-          <div class="eyebrow" style="margin-bottom: 8px;">Efekt</div>
+          <div class="eyebrow" style="margin-bottom: 8px;">Effect</div>
           <div class="segmented small">
             <template x-for="(name, i) in micEffects" :key="i">
               <button :class="{ on: micEffect === i }" @click="pickEffect(i)" x-text="name"></button>
@@ -1975,18 +1988,29 @@
         </div>
 
         <div x-show="micSource === 'device'" class="slider-row">
-          <label>Czułość <span x-text="sensitivity"></span></label>
+          <label>Sensitivity <span x-text="sensitivity"></span></label>
           <input type="range" min="0" max="100" x-model.number="sensitivity" @input="sendDeviceMic()">
         </div>
 
         <div x-show="micSource === 'phone'" class="stack">
           <div class="row">
-            <button class="btn accent" x-show="!recording" @click="startPhoneMic()">Start nasłuchu</button>
-            <button class="btn primary" x-show="recording" @click="stopPhoneMic()">Zatrzymaj</button>
-            <span class="pill" :class="recording ? 'warn' : ''" x-text="recording ? 'nasłuch aktywny' : 'nieaktywny'"></span>
+            <button class="btn accent" x-show="!recording" @click="startPhoneMic()">Start listening</button>
+            <button class="btn primary" x-show="recording" @click="stopPhoneMic()">Stop</button>
+            <span class="pill" :class="recording ? 'warn' : ''" x-text="recording ? 'listening' : 'inactive'"></span>
+          </div>
+          <div>
+            <div class="eyebrow" style="margin-bottom: 8px;">Colour</div>
+            <div class="row" style="gap: 12px; align-items: flex-start;">
+              <button class="btn small" :class="micColor < 0 ? 'primary' : ''" @click="setMicColor(-1)">Rotate</button>
+              <div class="palette small">
+                <template x-for="ci in PALETTE_ORDER" :key="ci">
+                  <div class="chip" :class="{ on: micColor === ci }" :style="'background: rgb(' + CLASSIC_RGB[ci].join(',') + ')'" :title="CLASSIC_NAMES[ci]" @click="setMicColor(ci)"></div>
+                </template>
+              </div>
+            </div>
           </div>
           <div class="meter"><div :style="'width:' + level + '%'"></div></div>
-          <p style="font-size: 13px; color: var(--gray-500);">Głośność z mikrofonu jest wysyłana do lampy co 150 ms, kolory zmieniają się cyklicznie.</p>
+          <p style="font-size: 13px; color: var(--gray-500);">The microphone level is sent to the lamp every 150 ms, in the chosen colour or rotating colours. The lamp microphone has no colour setting.</p>
         </div>
       </div>
 
@@ -1994,21 +2018,21 @@
       <div x-show="tab === 'timer'" class="stack">
         <div class="surface">
           <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
-            <h3>Harmonogram</h3>
-            <button class="btn small" @click="newAlarm()" :disabled="alarms.length >= 6">Dodaj</button>
+            <h3>Schedule</h3>
+            <button class="btn small" @click="newAlarm()" :disabled="alarms.length >= 6">Add</button>
           </div>
-          <p x-show="!alarms.length && !alarmForm" style="color: var(--gray-500);">Brak harmonogramów. Lampa pamięta do 6 aktywnych wpisów.</p>
+          <p x-show="!alarms.length && !alarmForm" style="color: var(--gray-500);">No schedules. The lamp stores up to 6 active entries.</p>
           <table class="spec" x-show="alarms.length">
-            <thead><tr><th>Godzina</th><th>Akcja</th><th>Powtarzanie</th><th></th></tr></thead>
+            <thead><tr><th>Time</th><th>Action</th><th>Repeat</th><th></th></tr></thead>
             <tbody>
               <template x-for="(a, i) in alarms" :key="i">
                 <tr :style="a.enable ? '' : 'color: var(--gray-500)'">
                   <td class="mono" x-text="pad(a.hour) + ':' + pad(a.minute)"></td>
-                  <td><span class="tag" x-text="a.on ? 'włącz' : 'wyłącz'"></span></td>
+                  <td><span class="tag" x-text="a.on ? 'turn on' : 'turn off'"></span></td>
                   <td x-text="weeksText(a.weeks)"></td>
                   <td style="text-align: right; white-space: nowrap;">
                     <label class="switch" style="margin-right: 8px;"><input type="checkbox" :checked="a.enable" @change="toggleAlarm(i)"></label>
-                    <button class="btn small" @click="editAlarm(i)">Edytuj</button>
+                    <button class="btn small" @click="editAlarm(i)">Edit</button>
                   </td>
                 </tr>
               </template>
@@ -2020,30 +2044,30 @@
               <hr>
               <div class="row">
                 <div style="width: 140px;">
-                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Godzina</label>
+                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Time</label>
                   <input class="field" type="time" x-model="alarmForm.time">
                 </div>
                 <div>
-                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Akcja</label>
+                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Action</label>
                   <div class="segmented small">
-                    <button :class="{ on: alarmForm.on }" @click="alarmForm.on = true">Włącz</button>
-                    <button :class="{ on: !alarmForm.on }" @click="alarmForm.on = false">Wyłącz</button>
+                    <button :class="{ on: alarmForm.on }" @click="alarmForm.on = true">Turn on</button>
+                    <button :class="{ on: !alarmForm.on }" @click="alarmForm.on = false">Turn off</button>
                   </div>
                 </div>
               </div>
               <div>
-                <label class="eyebrow" style="display: block; margin-bottom: 6px;">Dni tygodnia <span style="text-transform: none; letter-spacing: 0;" x-text="'(' + weeksText(alarmForm.weeks) + ')'"></span></label>
+                <label class="eyebrow" style="display: block; margin-bottom: 6px;">Weekdays <span style="text-transform: none; letter-spacing: 0;" x-text="'(' + weeksText(alarmForm.weeks) + ')'"></span></label>
                 <div class="row" style="gap: 6px;">
                   <template x-for="w in WEEKDAYS" :key="w[1]">
                     <button class="weekday" :class="{ on: alarmForm.weeks & w[1] }" @click="toggleWeek(w[1])" x-text="w[0]"></button>
                   </template>
                 </div>
               </div>
-              <label class="switch"><input type="checkbox" x-model="alarmForm.enable"> Aktywny</label>
+              <label class="switch"><input type="checkbox" x-model="alarmForm.enable"> Active</label>
               <div class="row">
-                <button class="btn primary" @click="saveAlarm()">Zapisz i wyślij</button>
-                <button class="btn" @click="alarmForm = null">Anuluj</button>
-                <button class="btn" x-show="alarmForm.index >= 0" @click="removeAlarm(alarmForm.index)" style="color: var(--clay);">Usuń</button>
+                <button class="btn primary" @click="saveAlarm()">Save and send</button>
+                <button class="btn" @click="alarmForm = null">Cancel</button>
+                <button class="btn" x-show="alarmForm.index >= 0" @click="removeAlarm(alarmForm.index)" style="color: var(--clay);">Delete</button>
               </div>
             </div>
           </template>
@@ -2051,42 +2075,42 @@
 
         <div class="surface">
           <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
-            <h3>Opóźnienie</h3>
-            <button class="btn small" x-show="!delay && !delayForm" @click="openDelay()">Ustaw</button>
+            <h3>Delay</h3>
+            <button class="btn small" x-show="!delay && !delayForm" @click="openDelay()">Set</button>
           </div>
 
           <template x-if="delay && !delayForm">
             <div class="row" style="justify-content: space-between;">
               <div>
                 <div style="font-family: var(--serif); font-size: 28px;" :style="delay.enable ? 'color: var(--slate)' : 'color: var(--gray-500)'" x-text="pad(delay.hour) + ':' + pad(delay.minute)"></div>
-                <div style="font-size: 13px; color: var(--gray-500);" x-text="delay.enable ? 'odliczanie aktywne' : 'wyłączone'"></div>
+                <div style="font-size: 13px; color: var(--gray-500);" x-text="delay.enable ? 'countdown active' : 'off'"></div>
               </div>
               <div class="row">
-                <label class="switch"><input type="checkbox" :checked="delay.enable" @change="toggleDelay()"> Aktywne</label>
-                <button class="btn small" @click="openDelay()">Edytuj</button>
-                <button class="btn small" @click="removeDelay()" style="color: var(--clay);">Usuń</button>
+                <label class="switch"><input type="checkbox" :checked="delay.enable" @change="toggleDelay()"> Active</label>
+                <button class="btn small" @click="openDelay()">Edit</button>
+                <button class="btn small" @click="removeDelay()" style="color: var(--clay);">Delete</button>
               </div>
             </div>
           </template>
 
-          <p x-show="!delay && !delayForm" style="color: var(--gray-500);">Odliczanie, po którym lampa wykona akcję czasową (do 23 h 59 min).</p>
+          <p x-show="!delay && !delayForm" style="color: var(--gray-500);">A countdown after which the lamp runs its timer action (up to 23 h 59 min).</p>
 
           <template x-if="delayForm">
             <div class="stack">
               <div class="row">
                 <div style="width: 110px;">
-                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Godziny</label>
+                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Hours</label>
                   <input class="field" type="number" min="0" max="23" x-model.number="delayForm.hour">
                 </div>
                 <div style="width: 110px;">
-                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Minuty</label>
+                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Minutes</label>
                   <input class="field" type="number" min="0" max="59" x-model.number="delayForm.minute">
                 </div>
               </div>
-              <label class="switch"><input type="checkbox" x-model="delayForm.enable"> Aktywne</label>
+              <label class="switch"><input type="checkbox" x-model="delayForm.enable"> Active</label>
               <div class="row">
-                <button class="btn primary" @click="saveDelay()">Zapisz i wyślij</button>
-                <button class="btn" @click="delayForm = null">Anuluj</button>
+                <button class="btn primary" @click="saveDelay()">Save and send</button>
+                <button class="btn" @click="delayForm = null">Cancel</button>
               </div>
             </div>
           </template>
@@ -2096,42 +2120,42 @@
       <!-- Settings -->
       <div x-show="tab === 'settings'" class="stack">
         <div class="surface stack">
-          <h3>Kolejność kanałów</h3>
-          <p style="color: var(--gray-500);">Jeśli kolory na taśmie się nie zgadzają (np. czerwony świeci na zielono), wybierz kolejność układu sterującego.</p>
+          <h3>Channel order</h3>
+          <p style="color: var(--gray-500);">If the strip shows wrong colours (for example red lights up green), pick the controller channel order.</p>
           <div class="segmented small">
             <template x-for="(o, i) in IC_ORDERS" :key="o">
               <button :class="{ on: icOrder === i }" @click="icOrder = i" x-text="o"></button>
             </template>
           </div>
-          <div><button class="btn primary" @click="sendIcOrder()">Wyślij kolejność</button></div>
+          <div><button class="btn primary" @click="sendIcOrder()">Send order</button></div>
 
           <template x-if="isMagic">
             <div class="stack">
               <hr>
-              <h3>Liczba diod (IC)</h3>
+              <h3>LED count (IC)</h3>
               <div class="row">
                 <div style="width: 160px;"><input class="field" type="number" min="16" max="2048" x-model.number="icLength" placeholder="16–2048"></div>
-                <button class="btn primary" @click="sendIcLength()">Wyślij</button>
+                <button class="btn primary" @click="sendIcLength()">Send</button>
               </div>
             </div>
           </template>
         </div>
 
         <div class="surface stack">
-          <h3>Synchronizacja czasu</h3>
-          <p style="color: var(--gray-500);">Czas jest wysyłany automatycznie po połączeniu. Harmonogram korzysta z zegara lampy.</p>
+          <h3>Time sync</h3>
+          <p style="color: var(--gray-500);">The time is sent automatically after connecting. Schedules use the lamp clock.</p>
           <div class="row">
             <template x-for="d in devices.filter(x => x.connected)" :key="d.id">
-              <button class="btn small" @click="syncTime(d.id)" x-text="'Synchronizuj: ' + d.name"></button>
+              <button class="btn small" @click="syncTime(d.id)" x-text="'Sync: ' + d.name"></button>
             </template>
-            <span x-show="!connectedCount" class="pill">brak połączonych lamp</span>
+            <span x-show="!connectedCount" class="pill">no connected lamps</span>
           </div>
         </div>
 
         <div class="stack">
-          <div class="eyebrow">Wysłane pakiety</div>
+          <div class="eyebrow">Sent packets</div>
           <div class="code-block">
-<pre><template x-if="!log.length"><span class="cm">// Tu pojawią się bajty wysyłane do charakterystyki 0xAE01.</span></template><template x-for="l in log" :key="l.id"><div><span class="cm" x-text="l.stamp"></span>  <span :class="l.dim ? 'cm' : 'str'" x-text="l.text"></span></div></template></pre>
+<pre><template x-if="!log.length"><span class="cm">// Bytes sent to characteristic 0xAE01 appear here.</span></template><template x-for="l in log" :key="l.id"><div><span class="cm" x-text="l.stamp"></span>  <span :class="l.dim ? 'cm' : 'str'" x-text="l.text"></span></div></template></pre>
           </div>
         </div>
       </div>
@@ -2139,14 +2163,6 @@
     </div>
   </section>
 
-  <section style="padding: 32px 32px 96px;">
-    <div class="wrap">
-      <p class="eyebrow" style="margin-bottom: 10px;">Jak to działa</p>
-      <p style="color: var(--gray-500);">
-        Lampa ogłasza usługę <code>0xAF30</code>, a polecenia trafiają do charakterystyki <code>0xAE01</code> w usłudze <code>0xAE30</code> (zapis bez odpowiedzi). Protokół odtworzono z aplikacji Raingel (v202601071930).
-      </p>
-    </div>
-  </section>
 
   <div class="toast" x-show="toastText" x-transition.opacity x-text="toastText"></div>
 </div>

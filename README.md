@@ -117,7 +117,7 @@ While segments are active, the first power, colour, mode, rhythm, motor or laser
 
 ### Phone microphone
 
-Every 150 ms the app reads samples, computes `20 * log10(mean |sample|) * 2.55` (same as the original app), clamps it to 0-255 and sends `10` with a rotating colour.
+Every 150 ms the app reads samples, computes `20 * log10(mean |sample|) * 2.55` (same as the original app), clamps it to 0-255 and sends `10` with the chosen colour or a rotating one. The lamp microphone mode (`04`) has no colour.
 
 ### Reconnecting
 
