@@ -18,3 +18,8 @@ site/
 # IntelliJ IDEA
 .idea/
 *.iml
+
+# Local files
+WebServerLite.jar
+Raingel_release_C55_V202601071930.apk
+index-claude-style.html

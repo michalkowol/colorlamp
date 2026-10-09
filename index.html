@@ -690,7 +690,7 @@
         },
         get group() {
           const d = this.selectedDevices[0];
-          return d && d.group ? d.group : 6;
+          return d && d.group ? d.group : 16;
         },
         get groupKnown() {
           const d = this.selectedDevices[0];
@@ -728,7 +728,7 @@
               connected: false,
               connecting: false,
               selected: first,
-              group: Number.isInteger(saved) ? saved : null,
+              group: Number.isInteger(saved) ? saved : 16,
               type: null
             });
             entry = this.devices[this.devices.length - 1];
@@ -1053,27 +1053,6 @@
           }));
         },
 
-        // Rainbow: magic scene "rainbow" (id 11) with RD OR YE GN CYAN BU VT, forward;
-        // RGB lamps have no rainbow scene, so fade through the same 7 colours instead.
-        get rainbowAvailable() {
-          return this.isMagic || (!this.isTwoPath && !this.isSphere);
-        },
-
-        rainbow() {
-          if (!this.rainbowAvailable) {
-            this.toast('Ten typ lampy nie ma trybu tęczy.');
-            return;
-          }
-          this.tab = 'mode';
-          if (this.isMagic) {
-            this.sceneTab = 10;
-            this.pickMode(17 * 2);
-          } else {
-            this.sceneTab = 0;
-            this.pickMode(25);
-          }
-        },
-
         pickScene(i) {
           this.sceneTab = i;
           this.modeIndex = -1;
@@ -1314,12 +1293,9 @@
             Połącz lampę lub taśmę LED obsługiwaną przez aplikację Raingel i steruj kolorem, trybami, rytmem muzyki oraz harmonogramem prosto z przeglądarki.
           </p>
         </div>
-        <div class="row">
-        <button class="btn accent" @click="rainbow()" :disabled="!rainbowAvailable" style="height: 64px; padding: 0 22px; border-radius: 32px; background: linear-gradient(90deg, #E5484D, #F76B15, #F5D90A, #46A758, #00C2D7, #3E63DD, #8E4EC6); border: 0; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,.35);">Tęcza</button>
         <button class="power" :class="{ on: power }" @click="togglePower()" :title="power ? 'Wyłącz' : 'Włącz'" aria-label="Zasilanie">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.2 6.6a8 8 0 1 0 11.6 0"/></svg>
         </button>
-        </div>
       </div>
     </div>
   </section>
@@ -1368,7 +1344,7 @@
         </template>
 
         <p x-show="devices.length && !groupKnown" style="font-size: 13px; color: var(--gray-500); margin-top: 10px;">
-          Przeglądarka nie zawsze udostępnia typ lampy z rozgłoszenia BLE. Jeśli go nie widać, wybierz typ ręcznie, aby dopasować dostępne funkcje (domyślnie RGBCW).
+          Przeglądarka nie zawsze udostępnia typ lampy z rozgłoszenia BLE. Jeśli go nie widać, wybierz typ ręcznie, aby dopasować dostępne funkcje (domyślnie Magic, adresowalna).
         </p>
       </div>
 
