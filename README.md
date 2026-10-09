@@ -133,3 +133,7 @@ All keys start with `raingel.`: `settings` (brightness, channel order, IC length
 - [Seventh-Void/raingel-led-hass](https://github.com/Seventh-Void/raingel-led-hass), Home Assistant integration
 - [AndrianBdn/open-vc-blelight](https://github.com/AndrianBdn/open-vc-blelight), Python control with bleak
 - [arizustudio/vc-blelight-studio-pro](https://github.com/arizustudio/vc-blelight-studio-pro), desktop controller for VC-BLELIGHT lamps
+
+## License
+
+MIT, see [LICENSE](LICENSE).
