@@ -2,6 +2,8 @@
 
 A single page app (`index.html`, Alpine.js, Web Bluetooth) that controls LED lamps and strips made for the Raingel Android app. The protocol was taken from the decompiled APK `Raingel_release_C55_V202601071930.apk` (package `am.doit.dohome.strip`).
 
+Live version: [michalkowol.github.io/colorlamp](https://michalkowol.github.io/colorlamp/)
+
 ## Running
 
 Web Bluetooth needs Chrome, Edge or Opera (desktop or Android) and a secure context. Open the page from `https://` or `localhost`, for example `python3 -m http.server`. It does not work from `file://` or on iOS.
