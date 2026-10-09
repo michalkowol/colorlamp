@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raingel · sterowanie lampą</title>
+  <style>
+    :root {
+      --ivory:    #FAF9F5;
+      --slate:    #141413;
+      --clay:     #D97757;
+      --oat:      #E3DACC;
+      --olive:    #788C5D;
+      --gray-150: #F0EEE6;
+      --gray-300: #D1CFC5;
+      --gray-500: #87867F;
+      --gray-700: #3D3D3A;
+      --white:    #FFFFFF;
+
+      --serif: ui-serif, Georgia, 'Times New Roman', serif;
+      --sans:  system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      --mono:  ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    [x-cloak] { display: none !important; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--ivory);
+      color: var(--gray-700);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--clay); }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: var(--gray-150);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    h1, h2, h3 {
+      font-family: var(--serif);
+      font-weight: 500;
+      color: var(--slate);
+      letter-spacing: -0.01em;
+    }
+
+    h1 { font-size: 38px; line-height: 1.15; }
+    h2 { font-size: 24px; line-height: 1.2; }
+    h3 { font-size: 18px; line-height: 1.3; }
+
+    p { font-size: 15px; }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+    }
+
+    blockquote {
+      border-left: 4px solid var(--clay);
+      padding: 8px 0 8px 18px;
+      color: var(--gray-700);
+      font-family: var(--serif);
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1.5px solid var(--gray-300);
+    }
+
+    .code-block {
+      background: var(--slate);
+      border-radius: 12px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .code-block pre {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: #E8E6DE;
+      white-space: pre;
+    }
+
+    .code-block .kw  { color: var(--clay); }
+    .code-block .str { color: var(--olive); }
+    .code-block .cm  { color: var(--gray-500); }
+
+    .pill {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      background: var(--gray-150);
+      border: 1.5px solid var(--gray-300);
+      color: var(--gray-700);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .pill.ok { border-color: var(--olive); color: var(--olive); background: var(--white); }
+    .pill.warn { border-color: var(--clay); color: var(--clay); background: var(--white); }
+
+    .tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--oat);
+      color: var(--slate);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    button.btn {
+      font-family: var(--sans);
+      font-size: 14px;
+      padding: 9px 16px;
+      border-radius: 10px;
+      border: 1.5px solid var(--gray-300);
+      background: var(--white);
+      color: var(--slate);
+      cursor: pointer;
+    }
+
+    button.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.btn.small { font-size: 13px; padding: 6px 11px; }
+
+    button.btn.primary {
+      background: var(--slate);
+      border-color: var(--slate);
+      color: var(--ivory);
+    }
+
+    button.btn.accent {
+      background: var(--clay);
+      border-color: var(--clay);
+      color: var(--ivory);
+    }
+
+    input.field, select.field {
+      font-family: var(--sans);
+      font-size: 14px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--gray-300);
+      background: var(--white);
+      color: var(--slate);
+      width: 100%;
+    }
+
+    input.field:focus, select.field:focus {
+      outline: none;
+      border-color: var(--slate);
+    }
+
+    table.spec {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    table.spec th, table.spec td {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1.5px solid var(--gray-300);
+    }
+
+    table.spec th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--gray-500);
+      font-weight: 600;
+    }
+
+    table.spec td.mono {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    /* App-specific pieces built from the same tokens */
+
+    .wrap { max-width: 760px; margin: 0 auto; }
+
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+    .surface {
+      background: var(--white);
+      border: 1.5px solid var(--gray-300);
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+
+    .segmented {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 4px;
+      background: var(--gray-150);
+      border-radius: 12px;
+      border: 1.5px solid var(--gray-300);
+    }
+
+    .segmented button {
+      flex: 1 1 auto;
+      font-family: var(--sans);
+      font-size: 14px;
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--gray-700);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .segmented button.on {
+      background: var(--white);
+      color: var(--slate);
+      box-shadow: 0 0 0 1.5px var(--gray-300);
+    }
+
+    .segmented.small button { font-size: 13px; padding: 6px 10px; }
+
+    .power {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 1.5px solid var(--gray-300);
+      background: var(--white);
+      color: var(--gray-500);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .power.on {
+      background: var(--clay);
+      border-color: var(--clay);
+      color: var(--ivory);
+    }
+
+    .power svg { width: 26px; height: 26px; }
+
+    .device {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1.5px solid var(--gray-300);
+    }
+
+    .device:last-child { border-bottom: 0; }
+
+    .dot-state {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--gray-300);
+      flex-shrink: 0;
+    }
+
+    .dot-state.ok { background: var(--olive); }
+    .dot-state.busy { background: var(--clay); }
+
+    .slider-row label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: var(--slate);
+      margin-bottom: 6px;
+    }
+
+    .slider-row label span { font-family: var(--mono); font-size: 13px; color: var(--gray-500); }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--gray-300);
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--white);
+      border: 1.5px solid var(--slate);
+      cursor: pointer;
+    }
+
+    input[type=range]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--white);
+      border: 1.5px solid var(--slate);
+      cursor: pointer;
+    }
+
+    input[type=range].cct { background: linear-gradient(90deg, #FFFF00, #FFFFFF); border: 1.5px solid var(--gray-300); height: 10px; }
+    input[type=range].wb  { background: linear-gradient(90deg, #000000, #FFFFFF); border: 1.5px solid var(--gray-300); height: 10px; }
+
+    .wheel-box {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    canvas.wheel {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      touch-action: none;
+      cursor: crosshair;
+      border: 1.5px solid var(--gray-300);
+    }
+
+    .chip {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1.5px solid var(--gray-300);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .chip.on { outline: 2px solid var(--slate); outline-offset: 2px; }
+
+    .preview {
+      width: 72px;
+      height: 72px;
+      border-radius: 14px;
+      border: 1.5px solid var(--gray-300);
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 8px;
+      max-height: 380px;
+      overflow-y: auto;
+      padding: 2px;
+    }
+
+    .mode-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      text-align: left;
+      font-family: var(--sans);
+      font-size: 13.5px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--gray-300);
+      background: var(--white);
+      color: var(--slate);
+      cursor: pointer;
+    }
+
+    .mode-item.on { border-color: var(--clay); box-shadow: 0 0 0 1.5px var(--clay); }
+
+    .cdot {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 1px solid rgba(20, 20, 19, 0.25);
+    }
+
+    .meter {
+      height: 10px;
+      border-radius: 999px;
+      background: var(--gray-150);
+      border: 1.5px solid var(--gray-300);
+      overflow: hidden;
+    }
+
+    .meter > div { height: 100%; background: var(--clay); transition: width 120ms linear; }
+
+    .weekday {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      padding: 6px 9px;
+      border-radius: 8px;
+      border: 1.5px solid var(--gray-300);
+      background: var(--white);
+      color: var(--gray-700);
+      cursor: pointer;
+    }
+
+    .weekday.on { background: var(--slate); border-color: var(--slate); color: var(--ivory); }
+
+    .switch { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+    .switch input { width: 18px; height: 18px; accent-color: var(--clay); }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: var(--slate);
+      color: var(--ivory);
+      font-size: 14px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      max-width: calc(100% - 32px);
+      z-index: 10;
+    }
+
+    .stack > * + * { margin-top: 18px; }
+  </style>
+
+  <script>
+    // Protocol reverse-engineered from Raingel_release_C55_V202601071930.apk
+    // (am.doit.dohome.strip.service.StripManager / StripBleManager, bean.Mode).
+    const UUID_SCAN = 0xaf30;          // advertised service, used only for scanning
+    const UUID_SERVICE = 0xae30;       // GATT service with the write characteristic
+    const UUID_WRITE = 0xae01;         // write without response
+    const COMPANY_ID = 22872;          // BuildConfig.APP_ID, manufacturer data = [group, type]
+
+    const GROUPS = [
+      { id: 1,  name: 'Ściemniacz (DIM)' },
+      { id: 2,  name: 'CCT' },
+      { id: 3,  name: 'RGB' },
+      { id: 4,  name: 'RGBW' },
+      { id: 5,  name: 'RGB + CCT (RGBC)' },
+      { id: 6,  name: 'RGBCW' },
+      { id: 16, name: 'Magic (adresowalna)' },
+      { id: 17, name: 'Magic W, 2 tory' },
+      { id: 18, name: 'Magic C, 2 tory' },
+      { id: 19, name: 'Kula (silnik + laser)' },
+      { id: 20, name: 'Magic W' },
+      { id: 21, name: 'Magic CW' }
+    ];
+
+    const COLOR_TABS = {
+      2:  ['cct'],
+      4:  ['color', 'wb'],
+      5:  ['color', 'cct'],
+      16: ['color'],
+      19: ['color', 'wb', 'motor', 'laser'],
+      20: ['color', 'wb'],
+      21: ['color', 'cct']
+    };
+    const COLOR_TABS_DEFAULT = ['color', 'cct', 'wb'];
+    const COLOR_TAB_NAMES = { color: 'Kolor', cct: 'Barwa bieli', wb: 'Biały', motor: 'Silnik', laser: 'Gwiazdy' };
+
+    const CLASSIC_RGB = [[255, 0, 0], [255, 0, 255], [0, 0, 255], [0, 255, 255], [0, 255, 0], [255, 255, 0], [255, 255, 255]];
+
+    const DOT = {
+      RD: '#E5484D', GN: '#46A758', BU: '#3E63DD', YE: '#F5D90A', CYAN: '#00C2D7',
+      VT: '#8E4EC6', OR: '#F76B15', OG: '#F76B15', WT: '#FFFFFF'
+    };
+    const DOT_NAME = {
+      RD: 'czerwony', GN: 'zielony', BU: 'niebieski', YE: 'żółty', CYAN: 'cyjan',
+      VT: 'fioletowy', OR: 'pomarańczowy', OG: 'pomarańczowy', WT: 'biały'
+    };
+
+    // R.array.mode_colors (magic), mode_rgb_colors, mode_sphere_colors
+    const MAGIC_COLOR_NAMES = ['RD_GN', 'RD_BU', 'GN_BU', 'RD_GN_BU', 'BU_YE_CYAN', 'CYAN_VT_OG', 'RD_GN_BU_YE', 'GN_BU_YE_CYAN', 'BU_YE_CYAN_VT', 'RD_GN_BU_YE_CYAN', 'GN_BU_YE_CYAN_VT', 'BU_YE_CYAN_VT_OR', 'RD_GN_BU_YE_CYAN_VT', 'GN_BU_YE_CYAN_VT_OR', 'BU_YE_CYAN_VT_OR_WT', 'RD_GN_BU_YE_CYAN_VT_OG', 'GN_BU_YE_CYAN_VT_OR_WT', 'RD_OR_YE_GN_CYAN_BU_VT', 'RD_GN_BU_YE_CYAN_VT_OR_WT'];
+    const RGB_COLOR_NAMES = ['OR_WT', 'VT_OR', 'CYAN_VT', 'YE_CYAN', 'BU_YE', 'GN_BU', 'RD_GN', 'VT_OR_WT', 'CYAN_VT_OR', 'YE_CYAN_VT', 'BU_YE_CYAN', 'GN_BU_YE', 'RD_GN_BU', 'CYAN_VT_OR_WT', 'YE_CYAN_VT_OR', 'BU_YE_CYAN_VT', 'GN_BU_YE_CYAN', 'RD_GN_BU_YE', 'YE_CYAN_VT_OR_WT', 'BU_YE_CYAN_VT_OR', 'GN_BU_YE_CYAN_VT', 'RD_GN_BU_YE_CYAN', 'BU_YE_CYAN_VT_OR_WT', 'GN_BU_YE_CYAN_VT_OR', 'RD_GN_BU_YE_CYAN_VT', 'RD_OR_YE_GN_CYAN_BU_VT', 'GN_BU_YE_CYAN_VT_OR_WT', 'RD_GN_BU_YE_CYAN_VT_OG', 'RD_OR_YE_GN_CYAN_BU_VT_WT', 'RD_GN_BU_YE_CYAN_VT_OR_WT'];
+    const SPHERE_COLOR_NAMES = ['RD_GN', 'RD_BU', 'RD_WT', 'GN_BU', 'GN_WT', 'BU_WT', 'RD_GN_BU', 'RD_GN_BU_WT'];
+
+    // Mode.RGB_MODES / Mode.SPHERE_MODES: [colorId, colorValue, colorCount]
+    const RGB_MODES = [[0, '67', 2], [1, '56', 2], [2, '45', 2], [3, '34', 2], [4, '23', 2], [5, '12', 2], [6, '01', 2], [7, '5670', 3], [8, '4560', 3], [9, '3450', 3], [10, '2340', 3], [11, '1230', 3], [12, '0120', 3], [13, '4567', 4], [14, '3456', 4], [15, '2345', 4], [16, '1234', 4], [17, '0123', 4], [18, '345670', 5], [19, '234560', 5], [20, '123450', 5], [21, '012340', 5], [22, '234567', 6], [23, '123456', 6], [24, '012345', 6], [25, '06314250', 7], [26, '12345670', 7], [27, '01234560', 7], [28, '06314257', 8], [29, '01234567', 8]];
+    const SPHERE_MODES = [[0, '01000000', 2], [1, '02000000', 2], [2, '07000000', 2], [3, '12000000', 2], [4, '17000000', 2], [5, '27000000', 2], [6, '01200000', 3], [7, '01270000', 4]];
+    const RGB_SCENES = ['Przenikanie', 'Skok', 'Oddech', 'Błysk'];
+
+    // Mode.MAGIC_MODES: 18 scenes x 19 colour sets (colorValue indexed by colorId)
+    const MAGIC_VALUES = ['0201000000', '0202000000', '0212000000', '0301200000', '0323400000', '0345600000', '0401230000', '0412340000', '0423450000', '0501234000', '0512345000', '0523456000', '0601234500', '0612345600', '0623456700', '0701234560', '0712345670', '0706314250', '0801234567'];
+    const MAGIC_SCENES = ['Przenikanie', 'Skok', 'Oddech', 'Błysk', 'Meteor', 'Stos', 'Pływanie', 'Reflektor', 'Fala', 'Woda', 'Tęcza', 'Mruganie', 'Odbicie', 'Wahadło', 'Migotanie', 'Wł./wył.', 'Kurtyna', 'Naprzemiennie'];
+
+    // Two-path scenes: new Mode(i + 200), no colour data
+    const TWO_PATH_SCENES = ['Auto', 'Wiele kolorów', 'Skok asynchr.', 'Przenikanie asynchr.', 'Skok', 'Przenikanie', 'Migotanie 1', 'Migotanie 2', 'Stroboskop 1', 'Stroboskop 2', 'Miganie', 'Oddech', 'WW miganie', 'WW oddech', 'RGBW skok', 'RGBW miganie', 'Fale'];
+
+    const RGB_EFFECTS = ['Klasyczny', 'Łagodny', 'Dynamiczny', 'Disco'];
+    const MAGIC_EFFECTS = ['Klasyczny', 'Przewijanie', 'Energia', 'Spektrum'];
+    const MIC_COLORS = [[255, 0, 0], [255, 125, 0], [255, 255, 0], [0, 255, 0], [0, 0, 255], [0, 255, 255]];
+    const IC_ORDERS = ['RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR'];
+    const WEEKDAYS = [['Pn', 1], ['Wt', 2], ['Śr', 4], ['Cz', 8], ['Pt', 16], ['So', 32], ['Nd', 64]];
+
+    function hexBytes(str) {
+      const out = [];
+      for (let i = 0; i + 1 < str.length; i += 2) out.push(parseInt(str.slice(i, i + 2), 16));
+      return out;
+    }
+
+    function dotsOf(name) {
+      return name.split('_').map(k => ({ color: DOT[k], title: DOT_NAME[k] }));
+    }
+
+    function buildMagicModes() {
+      const scenes = [];
+      for (let id = 1; id <= 18; id++) {
+        const items = [];
+        MAGIC_VALUES.forEach((value, colorId) => {
+          let variants;
+          if (id <= 4) variants = [{ section: 0 }, { section: 1 }];
+          else if (id <= 11) variants = [{ direction: 0 }, { direction: 1 }];
+          else if (id === 14) variants = [{ colorful: 0 }, { colorful: 1 }];
+          else if (id === 16) variants = [{ alternate: 0 }, { alternate: 1 }];
+          else if (id === 17) variants = [{ status: 0 }, { status: 1 }];
+          else variants = [{}];
+          variants.forEach(v => {
+            const m = Object.assign({ section: 0, direction: 0, alternate: 0, colorful: 0, status: 0 }, v);
+            let fmt;
+            if (id === 16) fmt = (id & 31) | (m.alternate << 6);
+            else if (id === 17) fmt = (id & 31) | (m.status << 6);
+            else if (id === 14) fmt = (id & 31) | (m.colorful << 6);
+            else fmt = (id & 31) | (m.section << 7) | (m.direction << 6);
+            let suffix = '';
+            if (id < 5) suffix = m.section === 0 ? '' : 'sekcjami';
+            else if (id < 12) suffix = m.direction === 0 ? 'naprzód' : 'wstecz';
+            else if (id === 14) suffix = m.colorful === 0 ? 'kolor' : 'wielokolor';
+            else if (id === 16) suffix = m.alternate === 0 ? '' : 'naprzemiennie';
+            else if (id === 17) suffix = m.status === 0 ? 'w górę' : 'w dół';
+            items.push({ dots: dotsOf(MAGIC_COLOR_NAMES[colorId]), label: suffix, head: [fmt], tail: hexBytes(value) });
+          });
+        });
+        scenes.push(items);
+      }
+      return scenes;
+    }
+
+    const MAGIC_MODES = buildMagicModes();
+
+    function hsvToRgb(h, s, v) {
+      const c = v * s;
+      const hp = (h % 360) / 60;
+      const x = c * (1 - Math.abs((hp % 2) - 1));
+      let r = 0, g = 0, b = 0;
+      if (hp < 1) { r = c; g = x; }
+      else if (hp < 2) { r = x; g = c; }
+      else if (hp < 3) { g = c; b = x; }
+      else if (hp < 4) { g = x; b = c; }
+      else if (hp < 5) { r = x; b = c; }
+      else { r = c; b = x; }
+      const m = v - c;
+      return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+    }
+
+    function rgbToHs(r, g, b) {
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+      let h = 0;
+      if (d !== 0) {
+        if (max === r) h = 60 * (((g - b) / d) % 6);
+        else if (max === g) h = 60 * ((b - r) / d + 2);
+        else h = 60 * ((r - g) / d + 4);
+      }
+      if (h < 0) h += 360;
+      return { h, s: max === 0 ? 0 : d / max };
+    }
+
+    function toHex(bytes) {
+      return bytes.map(b => b.toString(16).padStart(2, '0')).join(' ');
+    }
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    // Native Web Bluetooth objects must stay outside Alpine's reactive proxies.
+    const links = new Map();
+    const pending = {};
+    const flushing = {};
+    const mic = { stream: null, ctx: null, analyser: null, buf: null, timer: null };
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('lamp', () => ({
+        supported: !!(navigator.bluetooth && navigator.bluetooth.requestDevice),
+        secure: window.isSecureContext,
+
+        // Chrome: "Bluetooth permission has been blocked." (NotAllowedError / SecurityError)
+        isPermissionBlocked(e) {
+          if (!e) return false;
+          const msg = String(e.message || '');
+          if (/permission has been blocked|permissions policy|globally disabled/i.test(msg)) return true;
+          return e.name === 'SecurityError' || (e.name === 'NotAllowedError' && /permission|blocked/i.test(msg));
+        },
+        devices: [],
+        tab: 'color',
+        power: false,
+        toastText: '',
+        toastTimer: null,
+        log: [],
+
+        brightness: 49,
+        colorTab: 'color',
+        rgb: [255, 0, 0],
+        hue: 0,
+        sat: 1,
+        presetIndex: 0,
+        cct: 255,
+        wb: 255,
+        motorOn: false,
+        motorSpeed: 50,
+        laserOn: false,
+        laserSpeed: 50,
+
+        sceneTab: 0,
+        modeIndex: -1,
+        speed: 50,
+        modeBrightness: 50,
+
+        micSource: 'device',
+        sensitivity: 50,
+        micEffect: 0,
+        recording: false,
+        level: 0,
+        micColorIndex: 0,
+
+        alarms: [],
+        alarmForm: null,
+        delay: null,
+        delayForm: null,
+
+        icOrder: 0,
+        icLength: 0,
+
+        RGB_SCENES, MAGIC_SCENES, TWO_PATH_SCENES, CLASSIC_RGB, IC_ORDERS, WEEKDAYS, GROUPS, COLOR_TAB_NAMES,
+
+        init() {
+          const s = this.load('settings', {});
+          if (Number.isInteger(s.brightness)) this.brightness = s.brightness;
+          if (Number.isInteger(s.icOrder)) this.icOrder = s.icOrder;
+          if (Number.isInteger(s.icLength)) this.icLength = s.icLength;
+          this.alarms = this.load('alarms', []);
+          this.delay = this.load('delay', null);
+
+          this.$watch('group', () => {
+            this.colorTab = this.colorTabs[0];
+            this.sceneTab = 0;
+            this.modeIndex = -1;
+            this.$nextTick(() => this.drawWheel());
+          });
+          this.$watch('colorTab', v => { if (v === 'color') this.$nextTick(() => this.drawWheel()); });
+          this.$watch('tab', v => {
+            if (v !== 'rhythm') this.stopPhoneMic();
+            if (v === 'color') this.$nextTick(() => this.drawWheel());
+          });
+          this.$nextTick(() => this.drawWheel());
+        },
+
+        // ---------- persistence ----------
+        load(key, fallback) {
+          try {
+            const raw = localStorage.getItem('raingel.' + key);
+            return raw === null ? fallback : JSON.parse(raw);
+          } catch (e) {
+            return fallback;
+          }
+        },
+        save(key, value) {
+          try { localStorage.setItem('raingel.' + key, JSON.stringify(value)); } catch (e) { /* storage unavailable */ }
+        },
+        saveSettings() {
+          this.save('settings', { brightness: this.brightness, icOrder: this.icOrder, icLength: this.icLength });
+        },
+
+        toast(text, ms) {
+          this.toastText = text;
+          clearTimeout(this.toastTimer);
+          this.toastTimer = setTimeout(() => { this.toastText = ''; }, ms || 3200);
+        },
+
+        // ---------- devices ----------
+        get connectedCount() {
+          return this.devices.filter(d => d.connected).length;
+        },
+        get selectedDevices() {
+          return this.devices.filter(d => d.selected);
+        },
+        get group() {
+          const d = this.selectedDevices[0];
+          return d && d.group ? d.group : 6;
+        },
+        get groupKnown() {
+          const d = this.selectedDevices[0];
+          return !!(d && d.group);
+        },
+        get isMagic() { return [16, 20, 21].includes(this.group); },
+        get isTwoPath() { return [17, 18].includes(this.group); },
+        get isSphere() { return this.group === 19; },
+        get colorTabs() { return COLOR_TABS[this.group] || COLOR_TABS_DEFAULT; },
+
+        async addDevice() {
+          if (!this.supported) {
+            this.toast('Ta przeglądarka nie obsługuje Web Bluetooth.');
+            return;
+          }
+          let device;
+          try {
+            device = await this.request(true);
+          } catch (e) {
+            if (e && e.name === 'NotFoundError') return;
+            if (this.isPermissionBlocked(e)) {
+              this.toast('Dostęp do Bluetooth jest zablokowany. Kliknij ikonę obok adresu strony → Ustawienia witryny → Urządzenia Bluetooth: Zezwalaj, potem przeładuj stronę.', 8000);
+              return;
+            }
+            this.toast('Nie udało się wybrać urządzenia: ' + (e && e.message ? e.message : e));
+            return;
+          }
+          let entry = this.devices.find(d => d.id === device.id);
+          if (!entry) {
+            const saved = this.load('group.' + device.id, null);
+            const first = this.selectedDevices.length === 0;
+            this.devices.push({
+              id: device.id,
+              name: device.name || 'Lampa',
+              connected: false,
+              connecting: false,
+              selected: first,
+              group: Number.isInteger(saved) ? saved : null,
+              type: null
+            });
+            entry = this.devices[this.devices.length - 1];
+            device.addEventListener('gattserverdisconnected', () => this.onDisconnected(device.id));
+            links.set(device.id, { device, char: null, chain: Promise.resolve() });
+          }
+          await this.connect(device.id);
+          this.readAdvertisement(device);
+        },
+
+        async request(withManufacturer) {
+          const filters = [{ services: [UUID_SCAN] }];
+          if (withManufacturer) filters.push({ manufacturerData: [{ companyIdentifier: COMPANY_ID }] });
+          try {
+            return await navigator.bluetooth.requestDevice({ filters, optionalServices: [UUID_SERVICE] });
+          } catch (e) {
+            // Older Chromium builds reject the manufacturerData filter with a TypeError.
+            if (withManufacturer && e instanceof TypeError) return this.request(false);
+            throw e;
+          }
+        },
+
+        dev(id) {
+          return this.devices.find(d => d.id === id);
+        },
+
+        async connect(id) {
+          const link = links.get(id);
+          const d = this.dev(id);
+          if (!link || !d || d.connecting) return;
+          d.connecting = true;
+          try {
+            const server = await link.device.gatt.connect();
+            const service = await server.getPrimaryService(UUID_SERVICE);
+            link.char = await service.getCharacteristic(UUID_WRITE);
+            link.chain = Promise.resolve();
+            d.connected = true;
+            await this.writeTo(id, this.timePacket());
+          } catch (e) {
+            d.connected = false;
+            link.char = null;
+            this.toast('Błąd połączenia z ' + d.name + ': ' + (e && e.message ? e.message : e));
+          } finally {
+            d.connecting = false;
+          }
+        },
+
+        disconnect(id) {
+          const link = links.get(id);
+          if (link && link.device.gatt.connected) link.device.gatt.disconnect();
+          this.onDisconnected(id);
+        },
+
+        forget(id) {
+          this.disconnect(id);
+          links.delete(id);
+          this.devices = this.devices.filter(d => d.id !== id);
+          if (this.devices.length && !this.selectedDevices.length) this.devices[0].selected = true;
+        },
+
+        onDisconnected(id) {
+          const d = this.dev(id);
+          const link = links.get(id);
+          if (link) link.char = null;
+          if (d) d.connected = false;
+        },
+
+        toggleSelect(d) {
+          if (d.selected) {
+            d.selected = false;
+            return;
+          }
+          const first = this.selectedDevices[0];
+          if (first && first.group && d.group && first.group !== d.group) {
+            this.toast('Razem można sterować tylko lampami tego samego typu.');
+            return;
+          }
+          d.selected = true;
+        },
+
+        setGroup(d, value) {
+          const g = parseInt(value, 10);
+          d.group = Number.isInteger(g) ? g : null;
+          this.save('group.' + d.id, d.group);
+        },
+
+        async readAdvertisement(device) {
+          if (typeof device.watchAdvertisements !== 'function') return;
+          const ctrl = new AbortController();
+          const onAdv = ev => {
+            const data = ev.manufacturerData && ev.manufacturerData.get(COMPANY_ID);
+            if (data && data.byteLength >= 2) {
+              const d = this.dev(device.id);
+              if (d) {
+                d.group = data.getUint8(0);
+                d.type = data.getUint8(1);
+                this.save('group.' + device.id, d.group);
+              }
+            }
+            device.removeEventListener('advertisementreceived', onAdv);
+            ctrl.abort();
+          };
+          device.addEventListener('advertisementreceived', onAdv);
+          try {
+            await device.watchAdvertisements({ signal: ctrl.signal });
+            setTimeout(() => {
+              device.removeEventListener('advertisementreceived', onAdv);
+              ctrl.abort();
+            }, 10000);
+          } catch (e) {
+            device.removeEventListener('advertisementreceived', onAdv);
+          }
+        },
+
+        // ---------- transport ----------
+        writeTo(id, bytes) {
+          const link = links.get(id);
+          if (!link) return Promise.resolve();
+          link.chain = link.chain.then(async () => {
+            const c = link.char;
+            if (!c) return;
+            const data = new Uint8Array(bytes);
+            if (c.properties.writeWithoutResponse && c.writeValueWithoutResponse) await c.writeValueWithoutResponse(data);
+            else if (c.writeValueWithResponse) await c.writeValueWithResponse(data);
+            else await c.writeValue(data);
+          }).catch(e => {
+            this.pushLog('błąd zapisu: ' + (e && e.message ? e.message : e), true);
+          });
+          return link.chain;
+        },
+
+        async send(bytes) {
+          const targets = this.devices.filter(d => d.selected && d.connected);
+          this.pushLog(toHex(bytes), targets.length === 0);
+          if (!targets.length) {
+            if (!this.toastText) this.toast(this.devices.length ? 'Zaznacz połączoną lampę.' : 'Najpierw połącz lampę.');
+            return;
+          }
+          await Promise.all(targets.map(d => this.writeTo(d.id, bytes)));
+        },
+
+        // Coalesces fast slider/picker updates: only the newest packet per key is sent.
+        sendLatest(key, bytes) {
+          pending[key] = bytes;
+          if (flushing[key]) return;
+          flushing[key] = true;
+          (async () => {
+            try {
+              while (pending[key]) {
+                const b = pending[key];
+                pending[key] = null;
+                await this.send(b);
+                await sleep(60);
+              }
+            } finally {
+              flushing[key] = false;
+            }
+          })();
+        },
+
+        pushLog(text, dim) {
+          const t = new Date();
+          const stamp = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+          this.log.unshift({ id: t.getTime() + Math.random(), stamp, text, dim: !!dim });
+          if (this.log.length > 40) this.log.length = 40;
+        },
+
+        timePacket() {
+          const n = new Date();
+          const y = n.getFullYear();
+          return [0x08, 0x01, 0x00, 0x00, 0x00, y & 0xff, (y >> 8) & 0xff, n.getMonth() + 1, n.getDate(), n.getHours(), n.getMinutes(), n.getSeconds()];
+        },
+
+        // ---------- power & colour ----------
+        togglePower() {
+          this.power = !this.power;
+          this.stopPhoneMic();
+          this.send([0x01, this.power ? 1 : 0]);
+        },
+
+        setBrightness() {
+          this.power = true;
+          this.sendLatest('bright', [0x02, this.brightness]);
+        },
+
+        sendRgb() {
+          this.power = true;
+          const [r, g, b] = this.rgb;
+          this.sendLatest('color', [0x03, r, g, b, 0, 0, 0]);
+        },
+
+        sendCct() {
+          this.power = true;
+          this.sendLatest('color', [0x03, 0, 0, 0, 0, this.cct, 1]);
+        },
+
+        sendWb() {
+          this.power = true;
+          this.sendLatest('color', [0x03, 0, 0, 0, this.wb, 0, 1]);
+        },
+
+        pickPreset(i) {
+          this.presetIndex = i;
+          this.rgb = CLASSIC_RGB[i].slice();
+          const hs = rgbToHs(...this.rgb);
+          this.hue = hs.h;
+          this.sat = hs.s;
+          this.drawWheel();
+          this.sendRgb();
+        },
+
+        get rgbCss() {
+          return 'rgb(' + this.rgb.join(',') + ')';
+        },
+
+        drawWheel() {
+          const canvas = this.$refs.wheel;
+          if (!canvas) return;
+          const size = 240;
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const px = Math.round(size * dpr);
+          if (canvas.width !== px) {
+            canvas.width = px;
+            canvas.height = px;
+            canvas._img = null;
+          }
+          const ctx = canvas.getContext('2d');
+          if (!canvas._img) {
+            const img = ctx.createImageData(px, px);
+            const c = px / 2;
+            for (let y = 0; y < px; y++) {
+              for (let x = 0; x < px; x++) {
+                const dx = x - c, dy = c - y;
+                const dist = Math.sqrt(dx * dx + dy * dy) / c;
+                const i = (y * px + x) * 4;
+                if (dist > 1) { img.data[i + 3] = 0; continue; }
+                let h = Math.atan2(dy, dx) * 180 / Math.PI;
+                if (h < 0) h += 360;
+                const [r, g, b] = hsvToRgb(h, dist, 1);
+                img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
+              }
+            }
+            canvas._img = img;
+          }
+          ctx.putImageData(canvas._img, 0, 0);
+          const c = px / 2;
+          const a = this.hue * Math.PI / 180;
+          const mx = c + Math.cos(a) * this.sat * c;
+          const my = c - Math.sin(a) * this.sat * c;
+          ctx.lineWidth = 3 * dpr;
+          ctx.strokeStyle = '#141413';
+          ctx.fillStyle = this.rgbCss;
+          ctx.beginPath();
+          ctx.arc(mx, my, 10 * dpr, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.lineWidth = 1.5 * dpr;
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.arc(mx, my, 12 * dpr, 0, Math.PI * 2);
+          ctx.stroke();
+        },
+
+        wheelDown(ev) {
+          ev.currentTarget.setPointerCapture(ev.pointerId);
+          this.wheelPick(ev);
+        },
+
+        wheelMove(ev) {
+          if (ev.buttons === 0 && ev.pointerType === 'mouse') return;
+          if (!ev.currentTarget.hasPointerCapture(ev.pointerId)) return;
+          this.wheelPick(ev);
+        },
+
+        wheelPick(ev) {
+          const rect = ev.currentTarget.getBoundingClientRect();
+          const r = rect.width / 2;
+          const dx = ev.clientX - rect.left - r;
+          const dy = r - (ev.clientY - rect.top);
+          let h = Math.atan2(dy, dx) * 180 / Math.PI;
+          if (h < 0) h += 360;
+          this.hue = h;
+          this.sat = Math.min(Math.sqrt(dx * dx + dy * dy) / r, 1);
+          this.rgb = hsvToRgb(this.hue, this.sat, 1);
+          this.presetIndex = -1;
+          this.drawWheel();
+          this.sendRgb();
+        },
+
+        cctPresets: [0, 0.167, 0.334, 0.501, 0.668, 0.835, 1].map(s => Math.round(255 * (1 - s))),
+        wbPresets: [1, 0.835, 0.668, 0.501, 0.334, 0.167, 0].map(v => Math.round(255 * v)),
+
+        setMotor() {
+          this.power = true;
+          this.sendLatest('motor', [0x15, this.motorOn ? 1 : 0, 0x00, this.motorSpeed]);
+        },
+
+        setLaser() {
+          this.power = true;
+          this.sendLatest('laser', [0x17, this.laserOn ? 1 : 0, 0x00, this.laserSpeed, 0x64]);
+        },
+
+        // ---------- modes ----------
+        get sceneTabs() {
+          if (this.isMagic) return MAGIC_SCENES;
+          if (this.isTwoPath) return [];
+          return RGB_SCENES;
+        },
+
+        get modeItems() {
+          if (this.isMagic) return MAGIC_MODES[this.sceneTab] || [];
+          if (this.isTwoPath) {
+            return TWO_PATH_SCENES.map((name, i) => ({ dots: [], label: name, head: [(200 + i) & 31], tail: [] }));
+          }
+          const list = this.isSphere ? SPHERE_MODES : RGB_MODES;
+          const names = this.isSphere ? SPHERE_COLOR_NAMES : RGB_COLOR_NAMES;
+          return list.map(([colorId, value, count]) => ({
+            dots: dotsOf(names[colorId]),
+            label: '',
+            head: [this.sceneTab + 1],
+            tail: [count].concat(hexBytes(value))
+          }));
+        },
+
+        // Rainbow: magic scene "rainbow" (id 11) with RD OR YE GN CYAN BU VT, forward;
+        // RGB lamps have no rainbow scene, so fade through the same 7 colours instead.
+        get rainbowAvailable() {
+          return this.isMagic || (!this.isTwoPath && !this.isSphere);
+        },
+
+        rainbow() {
+          if (!this.rainbowAvailable) {
+            this.toast('Ten typ lampy nie ma trybu tęczy.');
+            return;
+          }
+          this.tab = 'mode';
+          if (this.isMagic) {
+            this.sceneTab = 10;
+            this.pickMode(17 * 2);
+          } else {
+            this.sceneTab = 0;
+            this.pickMode(25);
+          }
+        },
+
+        pickScene(i) {
+          this.sceneTab = i;
+          this.modeIndex = -1;
+        },
+
+        pickMode(i) {
+          this.modeIndex = i;
+          this.sendMode();
+        },
+
+        sendMode() {
+          const m = this.modeItems[this.modeIndex];
+          if (!m) return;
+          this.power = true;
+          // RGB/sphere: 07 scene speed brightness count colours; magic/2-path: 07 mode speed brightness colours
+          this.sendLatest('mode', [0x07].concat(m.head, [this.speed, this.modeBrightness], m.tail));
+        },
+
+        // ---------- rhythm ----------
+        get micEffects() {
+          return this.isMagic ? MAGIC_EFFECTS : RGB_EFFECTS;
+        },
+
+        setMicSource(src) {
+          if (src === this.micSource) return;
+          this.micSource = src;
+          if (src === 'device') {
+            this.stopPhoneMic();
+            this.sendDeviceMic();
+          }
+        },
+
+        pickEffect(i) {
+          this.micEffect = i;
+          if (this.micSource === 'device') this.sendDeviceMic();
+        },
+
+        sendDeviceMic() {
+          this.power = true;
+          this.sendLatest('mic', [0x04, this.micEffect, this.sensitivity]);
+        },
+
+        async startPhoneMic() {
+          if (this.recording) return;
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            this.toast('Przeglądarka nie udostępnia mikrofonu.');
+            return;
+          }
+          try {
+            mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+          } catch (e) {
+            this.toast('Brak dostępu do mikrofonu.');
+            return;
+          }
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          mic.ctx = new Ctx();
+          const src = mic.ctx.createMediaStreamSource(mic.stream);
+          mic.analyser = mic.ctx.createAnalyser();
+          mic.analyser.fftSize = 2048;
+          mic.buf = new Float32Array(mic.analyser.fftSize);
+          src.connect(mic.analyser);
+          this.recording = true;
+          this.power = true;
+          this.send([0x11, 0x04]);
+          mic.timer = setInterval(() => this.micTick(), 150);
+        },
+
+        micTick() {
+          if (!mic.analyser) return;
+          mic.analyser.getFloatTimeDomainData(mic.buf);
+          let sum = 0;
+          for (let i = 0; i < mic.buf.length; i++) sum += Math.abs(Math.round(mic.buf[i] * 32767));
+          const mean = sum / mic.buf.length;
+          // SystemRecorder: 20*log10(mean |sample|) * 2.55, clamped at 0
+          let vol = mean > 0 ? Math.floor(20 * Math.log10(mean) * 2.55) : 0;
+          vol = Math.max(0, Math.min(255, vol));
+          this.level = Math.round(vol / 255 * 100);
+          const c = MIC_COLORS[this.micColorIndex];
+          this.micColorIndex = (this.micColorIndex + 1) % 6;
+          this.sendLatest('phone', [0x10, c[0], c[1], c[2], 0, 0, vol, this.micEffect]);
+        },
+
+        stopPhoneMic() {
+          if (!this.recording) return;
+          clearInterval(mic.timer);
+          mic.timer = null;
+          if (mic.stream) mic.stream.getTracks().forEach(t => t.stop());
+          if (mic.ctx) mic.ctx.close().catch(() => {});
+          mic.stream = null;
+          mic.ctx = null;
+          mic.analyser = null;
+          this.recording = false;
+          this.level = 0;
+          const c = MIC_COLORS[this.micColorIndex];
+          this.sendLatest('phone', [0x10, c[0], c[1], c[2], 0, 0, 0, this.micEffect]);
+        },
+
+        // ---------- timers ----------
+        pad(n) { return String(n).padStart(2, '0'); },
+
+        weeksText(w) {
+          if (w === 0) return 'bez powtarzania';
+          if (w === 127) return 'codziennie';
+          if (w === 31) return 'dni robocze';
+          if (w === 96) return 'weekend';
+          return WEEKDAYS.filter(([, bit]) => w & bit).map(([n]) => n).join(' ');
+        },
+
+        newAlarm() {
+          if (this.alarms.length >= 6) return;
+          const n = new Date();
+          this.alarmForm = { index: -1, time: this.pad(n.getHours()) + ':' + this.pad(n.getMinutes()), weeks: 0, on: true, enable: true };
+        },
+
+        editAlarm(i) {
+          const a = this.alarms[i];
+          this.alarmForm = { index: i, time: this.pad(a.hour) + ':' + this.pad(a.minute), weeks: a.weeks, on: a.on, enable: a.enable };
+        },
+
+        toggleWeek(bit) {
+          this.alarmForm.weeks ^= bit;
+        },
+
+        saveAlarm() {
+          const f = this.alarmForm;
+          const m = /^(\d{1,2}):(\d{2})/.exec(f.time || '');
+          if (!m) {
+            this.toast('Podaj godzinę.');
+            return;
+          }
+          const a = { hour: Math.min(23, parseInt(m[1], 10)), minute: Math.min(59, parseInt(m[2], 10)), weeks: f.weeks, on: f.on, enable: f.enable };
+          if (f.index >= 0) this.alarms.splice(f.index, 1, a);
+          else this.alarms.push(a);
+          this.alarmForm = null;
+          this.syncAlarms();
+        },
+
+        removeAlarm(i) {
+          this.alarms.splice(i, 1);
+          this.alarmForm = null;
+          this.syncAlarms();
+        },
+
+        toggleAlarm(i) {
+          this.alarms[i].enable = !this.alarms[i].enable;
+          this.syncAlarms();
+        },
+
+        syncAlarms() {
+          this.save('alarms', this.alarms);
+          const active = this.alarms.filter(a => a.enable).slice(0, 6);
+          const bytes = new Array(active.length === 0 ? 3 : active.length * 3 + 1).fill(0);
+          bytes[0] = 0x0d;
+          active.forEach((a, i) => {
+            bytes[i * 3 + 1] = (a.hour | (i << 5)) & 0xff;
+            bytes[i * 3 + 2] = (a.minute | (a.on ? 0x80 : 0)) & 0xff;
+            bytes[i * 3 + 3] = a.weeks & 0x7f;
+          });
+          this.send(bytes);
+        },
+
+        openDelay() {
+          const d = this.delay;
+          this.delayForm = { hour: d ? d.hour : 0, minute: d ? d.minute : 30, enable: d ? d.enable : true };
+        },
+
+        saveDelay() {
+          const f = this.delayForm;
+          const hour = Math.max(0, Math.min(23, parseInt(f.hour, 10) || 0));
+          const minute = Math.max(0, Math.min(59, parseInt(f.minute, 10) || 0));
+          if (hour === 0 && minute === 0) {
+            this.toast('Ustaw co najmniej 1 minutę.');
+            return;
+          }
+          this.delay = { hour, minute, enable: !!f.enable };
+          this.delayForm = null;
+          this.syncDelay();
+        },
+
+        toggleDelay() {
+          if (!this.delay) return;
+          this.delay.enable = !this.delay.enable;
+          this.syncDelay();
+        },
+
+        removeDelay() {
+          if (this.delay && this.delay.enable) {
+            this.delay.enable = false;
+            this.syncDelay();
+          }
+          this.delay = null;
+          this.delayForm = null;
+          this.save('delay', null);
+        },
+
+        syncDelay() {
+          this.save('delay', this.delay);
+          const v = this.delay.hour * 60 + this.delay.minute;
+          this.send([0x05, this.delay.enable ? 1 : 0, 0x01, v & 0xff, (v >> 8) & 0xff]);
+        },
+
+        // ---------- settings ----------
+        sendIcOrder() {
+          this.saveSettings();
+          this.send([0x0e, this.icOrder + 1]);
+        },
+
+        sendIcLength() {
+          const n = parseInt(this.icLength, 10);
+          if (!Number.isInteger(n) || n < 16 || n > 2048) {
+            this.toast('Liczba diod musi być w zakresie 16–2048.');
+            return;
+          }
+          this.icLength = n;
+          this.saveSettings();
+          this.send([0x0f, n & 0xff, (n >> 8) & 0xff]);
+        },
+
+        syncTime(id) {
+          this.writeTo(id, this.timePacket());
+          this.pushLog(toHex(this.timePacket()));
+        }
+      }));
+    });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+</head>
+<body>
+<div x-data="lamp" x-cloak>
+
+  <section style="padding: 56px 32px 24px;">
+    <div class="wrap">
+      <div class="eyebrow" style="margin-bottom: 12px;">Raingel · Bluetooth LE</div>
+      <div class="row" style="justify-content: space-between; gap: 20px; align-items: flex-start;">
+        <div style="flex: 1 1 320px;">
+          <h1 style="margin-bottom: 12px;">Sterowanie lampą</h1>
+          <p style="max-width: 60ch;">
+            Połącz lampę lub taśmę LED obsługiwaną przez aplikację Raingel i steruj kolorem, trybami, rytmem muzyki oraz harmonogramem prosto z przeglądarki.
+          </p>
+        </div>
+        <div class="row">
+        <button class="btn accent" @click="rainbow()" :disabled="!rainbowAvailable" style="height: 64px; padding: 0 22px; border-radius: 32px; background: linear-gradient(90deg, #E5484D, #F76B15, #F5D90A, #46A758, #00C2D7, #3E63DD, #8E4EC6); border: 0; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,.35);">Tęcza</button>
+        <button class="power" :class="{ on: power }" @click="togglePower()" :title="power ? 'Wyłącz' : 'Włącz'" aria-label="Zasilanie">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.2 6.6a8 8 0 1 0 11.6 0"/></svg>
+        </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding: 8px 32px 24px;">
+    <div class="wrap stack">
+
+      <template x-if="!supported || !secure">
+        <blockquote>
+          <span x-show="!secure">Strona musi być otwarta przez <code>https://</code> albo <code>localhost</code>, inaczej Web Bluetooth jest niedostępny. </span>
+          <span x-show="supported === false">Ta przeglądarka nie obsługuje Web Bluetooth. Użyj Chrome, Edge lub Opery na komputerze albo Androidzie.</span>
+        </blockquote>
+      </template>
+
+      <div class="surface">
+        <div class="row" style="justify-content: space-between; margin-bottom: 6px;">
+          <h3>Urządzenia</h3>
+          <div class="row">
+            <span class="pill" :class="connectedCount ? 'ok' : ''" x-text="connectedCount + ' połączonych'"></span>
+            <button class="btn primary" @click="addDevice()" :disabled="!supported">Dodaj lampę</button>
+          </div>
+        </div>
+
+        <p x-show="!devices.length" style="color: var(--gray-500); margin-top: 8px;">
+          Brak urządzeń. Włącz lampę, kliknij <strong>Dodaj lampę</strong> i wybierz ją z listy.
+        </p>
+
+        <template x-for="d in devices" :key="d.id">
+          <div class="device">
+            <input type="checkbox" :checked="d.selected" @change="toggleSelect(d); $event.target.checked = d.selected" title="Steruj tą lampą" style="width: 18px; height: 18px; accent-color: var(--clay);">
+            <span class="dot-state" :class="d.connected ? 'ok' : (d.connecting ? 'busy' : '')"></span>
+            <div style="flex: 1 1 auto; min-width: 0;">
+              <div style="color: var(--slate); font-weight: 500;" x-text="d.name"></div>
+              <div style="font-size: 13px; color: var(--gray-500);" x-text="d.connected ? 'połączono' : (d.connecting ? 'łączenie…' : 'rozłączono')"></div>
+            </div>
+            <select class="field" style="width: auto; padding: 6px 10px; font-size: 13px;" :value="d.group === null ? '' : String(d.group)" @change="setGroup(d, $event.target.value)" title="Typ lampy">
+              <option value="">typ: nieznany</option>
+              <template x-for="g in GROUPS" :key="g.id">
+                <option :value="String(g.id)" x-text="g.name" :selected="d.group === g.id"></option>
+              </template>
+            </select>
+            <button class="btn small" x-show="!d.connected" :disabled="d.connecting" @click="connect(d.id)">Połącz</button>
+            <button class="btn small" x-show="d.connected" @click="disconnect(d.id)">Rozłącz</button>
+            <button class="btn small" @click="forget(d.id)" title="Usuń z listy">✕</button>
+          </div>
+        </template>
+
+        <p x-show="devices.length && !groupKnown" style="font-size: 13px; color: var(--gray-500); margin-top: 10px;">
+          Przeglądarka nie zawsze udostępnia typ lampy z rozgłoszenia BLE. Jeśli go nie widać, wybierz typ ręcznie, aby dopasować dostępne funkcje (domyślnie RGBCW).
+        </p>
+      </div>
+
+      <div class="segmented">
+        <button :class="{ on: tab === 'color' }" @click="tab = 'color'">Kolor</button>
+        <button :class="{ on: tab === 'mode' }" @click="tab = 'mode'">Tryby</button>
+        <button :class="{ on: tab === 'rhythm' }" @click="tab = 'rhythm'">Rytm</button>
+        <button :class="{ on: tab === 'timer' }" @click="tab = 'timer'">Harmonogram</button>
+        <button :class="{ on: tab === 'settings' }" @click="tab = 'settings'">Ustawienia</button>
+      </div>
+
+      <!-- Colour -->
+      <div x-show="tab === 'color'" class="surface stack">
+        <div class="segmented small" x-show="colorTabs.length > 1">
+          <template x-for="t in colorTabs" :key="t">
+            <button :class="{ on: colorTab === t }" @click="colorTab = t" x-text="COLOR_TAB_NAMES[t]"></button>
+          </template>
+        </div>
+
+        <div x-show="colorTab === 'color'" class="stack">
+          <div class="wheel-box">
+            <canvas class="wheel" x-ref="wheel" @pointerdown="wheelDown($event)" @pointermove="wheelMove($event)"></canvas>
+            <div class="stack" style="flex: 1 1 200px;">
+              <div class="row">
+                <div class="preview" :style="'background:' + rgbCss"></div>
+                <div>
+                  <div class="eyebrow">Wybrany kolor</div>
+                  <code x-text="'R ' + rgb[0] + ' · G ' + rgb[1] + ' · B ' + rgb[2]"></code>
+                </div>
+              </div>
+              <div>
+                <div class="eyebrow" style="margin-bottom: 8px;">Klasyczne</div>
+                <div class="row" style="gap: 8px;">
+                  <template x-for="(c, i) in CLASSIC_RGB" :key="i">
+                    <div class="chip" :class="{ on: presetIndex === i }" :style="'background: rgb(' + c.join(',') + ')'" @click="pickPreset(i)"></div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div x-show="colorTab === 'cct'" class="stack">
+          <div class="slider-row">
+            <label>Barwa: ciepła → zimna <span x-text="cct"></span></label>
+            <input type="range" class="cct" min="0" max="255" x-model.number="cct" @input="sendCct()">
+          </div>
+          <div class="row" style="gap: 8px;">
+            <template x-for="(v, i) in cctPresets" :key="i">
+              <div class="chip" :class="{ on: cct === v }" :style="'background: rgb(255,255,' + v + ')'" @click="cct = v; sendCct()"></div>
+            </template>
+          </div>
+        </div>
+
+        <div x-show="colorTab === 'wb'" class="stack">
+          <div class="slider-row">
+            <label>Kanał biały <span x-text="wb"></span></label>
+            <input type="range" class="wb" min="0" max="255" x-model.number="wb" @input="sendWb()">
+          </div>
+          <div class="row" style="gap: 8px;">
+            <template x-for="(v, i) in wbPresets" :key="i">
+              <div class="chip" :class="{ on: wb === v }" :style="'background: rgb(' + v + ',' + v + ',' + v + ')'" @click="wb = v; sendWb()"></div>
+            </template>
+          </div>
+        </div>
+
+        <div x-show="colorTab === 'motor'" class="stack">
+          <label class="switch"><input type="checkbox" x-model="motorOn" @change="setMotor()"> Obrót włączony</label>
+          <div class="slider-row">
+            <label>Prędkość <span x-text="motorSpeed"></span></label>
+            <input type="range" min="0" max="100" x-model.number="motorSpeed" @input="motorOn = true; setMotor()">
+          </div>
+        </div>
+
+        <div x-show="colorTab === 'laser'" class="stack">
+          <label class="switch"><input type="checkbox" x-model="laserOn" @change="setLaser()"> Gwiazdy (laser) włączone</label>
+          <div class="slider-row">
+            <label>Prędkość <span x-text="laserSpeed"></span></label>
+            <input type="range" min="0" max="100" x-model.number="laserSpeed" @input="laserOn = true; setLaser()">
+          </div>
+        </div>
+
+        <hr>
+        <div class="slider-row">
+          <label>Jasność <span x-text="brightness + '%'"></span></label>
+          <input type="range" min="0" max="100" x-model.number="brightness" @input="setBrightness()" @change="saveSettings()">
+        </div>
+      </div>
+
+      <!-- Modes -->
+      <div x-show="tab === 'mode'" class="surface stack">
+        <div class="segmented small" x-show="sceneTabs.length">
+          <template x-for="(name, i) in sceneTabs" :key="i">
+            <button :class="{ on: sceneTab === i }" @click="pickScene(i)" x-text="name"></button>
+          </template>
+        </div>
+
+        <div class="mode-grid">
+          <template x-for="(m, i) in modeItems" :key="sceneTab + '-' + i">
+            <button class="mode-item" :class="{ on: modeIndex === i }" @click="pickMode(i)">
+              <template x-for="(dot, j) in m.dots" :key="j">
+                <span class="cdot" :style="'background:' + dot.color" :title="dot.title"></span>
+              </template>
+              <span x-show="m.label" x-text="m.label" style="color: var(--gray-500);"></span>
+            </button>
+          </template>
+        </div>
+
+        <div class="slider-row">
+          <label>Prędkość <span x-text="speed"></span></label>
+          <input type="range" min="0" max="100" x-model.number="speed" @input="sendMode()">
+        </div>
+        <div class="slider-row">
+          <label>Jasność <span x-text="modeBrightness + '%'"></span></label>
+          <input type="range" min="0" max="100" x-model.number="modeBrightness" @input="sendMode()">
+        </div>
+        <p x-show="modeIndex < 0" style="font-size: 13px; color: var(--gray-500);">Wybierz efekt, aby go uruchomić. Suwaki zmieniają aktywny efekt.</p>
+      </div>
+
+      <!-- Rhythm -->
+      <div x-show="tab === 'rhythm'" class="surface stack">
+        <div class="segmented small">
+          <button :class="{ on: micSource === 'device' }" @click="setMicSource('device')">Mikrofon lampy</button>
+          <button :class="{ on: micSource === 'phone' }" @click="setMicSource('phone')">Mikrofon tego urządzenia</button>
+        </div>
+
+        <div>
+          <div class="eyebrow" style="margin-bottom: 8px;">Efekt</div>
+          <div class="segmented small">
+            <template x-for="(name, i) in micEffects" :key="i">
+              <button :class="{ on: micEffect === i }" @click="pickEffect(i)" x-text="name"></button>
+            </template>
+          </div>
+        </div>
+
+        <div x-show="micSource === 'device'" class="slider-row">
+          <label>Czułość <span x-text="sensitivity"></span></label>
+          <input type="range" min="0" max="100" x-model.number="sensitivity" @input="sendDeviceMic()">
+        </div>
+
+        <div x-show="micSource === 'phone'" class="stack">
+          <div class="row">
+            <button class="btn accent" x-show="!recording" @click="startPhoneMic()">Start nasłuchu</button>
+            <button class="btn primary" x-show="recording" @click="stopPhoneMic()">Zatrzymaj</button>
+            <span class="pill" :class="recording ? 'warn' : ''" x-text="recording ? 'nasłuch aktywny' : 'nieaktywny'"></span>
+          </div>
+          <div class="meter"><div :style="'width:' + level + '%'"></div></div>
+          <p style="font-size: 13px; color: var(--gray-500);">Głośność z mikrofonu jest wysyłana do lampy co 150 ms, kolory zmieniają się cyklicznie.</p>
+        </div>
+      </div>
+
+      <!-- Timers -->
+      <div x-show="tab === 'timer'" class="stack">
+        <div class="surface">
+          <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+            <h3>Harmonogram</h3>
+            <button class="btn small" @click="newAlarm()" :disabled="alarms.length >= 6">Dodaj</button>
+          </div>
+          <p x-show="!alarms.length && !alarmForm" style="color: var(--gray-500);">Brak harmonogramów. Lampa pamięta do 6 aktywnych wpisów.</p>
+          <table class="spec" x-show="alarms.length">
+            <thead><tr><th>Godzina</th><th>Akcja</th><th>Powtarzanie</th><th></th></tr></thead>
+            <tbody>
+              <template x-for="(a, i) in alarms" :key="i">
+                <tr :style="a.enable ? '' : 'color: var(--gray-500)'">
+                  <td class="mono" x-text="pad(a.hour) + ':' + pad(a.minute)"></td>
+                  <td><span class="tag" x-text="a.on ? 'włącz' : 'wyłącz'"></span></td>
+                  <td x-text="weeksText(a.weeks)"></td>
+                  <td style="text-align: right; white-space: nowrap;">
+                    <label class="switch" style="margin-right: 8px;"><input type="checkbox" :checked="a.enable" @change="toggleAlarm(i)"></label>
+                    <button class="btn small" @click="editAlarm(i)">Edytuj</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+
+          <template x-if="alarmForm">
+            <div class="stack" style="margin-top: 18px;">
+              <hr>
+              <div class="row">
+                <div style="width: 140px;">
+                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Godzina</label>
+                  <input class="field" type="time" x-model="alarmForm.time">
+                </div>
+                <div>
+                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Akcja</label>
+                  <div class="segmented small">
+                    <button :class="{ on: alarmForm.on }" @click="alarmForm.on = true">Włącz</button>
+                    <button :class="{ on: !alarmForm.on }" @click="alarmForm.on = false">Wyłącz</button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="eyebrow" style="display: block; margin-bottom: 6px;">Dni tygodnia <span style="text-transform: none; letter-spacing: 0;" x-text="'(' + weeksText(alarmForm.weeks) + ')'"></span></label>
+                <div class="row" style="gap: 6px;">
+                  <template x-for="w in WEEKDAYS" :key="w[1]">
+                    <button class="weekday" :class="{ on: alarmForm.weeks & w[1] }" @click="toggleWeek(w[1])" x-text="w[0]"></button>
+                  </template>
+                </div>
+              </div>
+              <label class="switch"><input type="checkbox" x-model="alarmForm.enable"> Aktywny</label>
+              <div class="row">
+                <button class="btn primary" @click="saveAlarm()">Zapisz i wyślij</button>
+                <button class="btn" @click="alarmForm = null">Anuluj</button>
+                <button class="btn" x-show="alarmForm.index >= 0" @click="removeAlarm(alarmForm.index)" style="color: var(--clay);">Usuń</button>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="surface">
+          <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+            <h3>Opóźnienie</h3>
+            <button class="btn small" x-show="!delay && !delayForm" @click="openDelay()">Ustaw</button>
+          </div>
+
+          <template x-if="delay && !delayForm">
+            <div class="row" style="justify-content: space-between;">
+              <div>
+                <div style="font-family: var(--serif); font-size: 28px;" :style="delay.enable ? 'color: var(--slate)' : 'color: var(--gray-500)'" x-text="pad(delay.hour) + ':' + pad(delay.minute)"></div>
+                <div style="font-size: 13px; color: var(--gray-500);" x-text="delay.enable ? 'odliczanie aktywne' : 'wyłączone'"></div>
+              </div>
+              <div class="row">
+                <label class="switch"><input type="checkbox" :checked="delay.enable" @change="toggleDelay()"> Aktywne</label>
+                <button class="btn small" @click="openDelay()">Edytuj</button>
+                <button class="btn small" @click="removeDelay()" style="color: var(--clay);">Usuń</button>
+              </div>
+            </div>
+          </template>
+
+          <p x-show="!delay && !delayForm" style="color: var(--gray-500);">Odliczanie, po którym lampa wykona akcję czasową (do 23 h 59 min).</p>
+
+          <template x-if="delayForm">
+            <div class="stack">
+              <div class="row">
+                <div style="width: 110px;">
+                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Godziny</label>
+                  <input class="field" type="number" min="0" max="23" x-model.number="delayForm.hour">
+                </div>
+                <div style="width: 110px;">
+                  <label class="eyebrow" style="display: block; margin-bottom: 6px;">Minuty</label>
+                  <input class="field" type="number" min="0" max="59" x-model.number="delayForm.minute">
+                </div>
+              </div>
+              <label class="switch"><input type="checkbox" x-model="delayForm.enable"> Aktywne</label>
+              <div class="row">
+                <button class="btn primary" @click="saveDelay()">Zapisz i wyślij</button>
+                <button class="btn" @click="delayForm = null">Anuluj</button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div x-show="tab === 'settings'" class="stack">
+        <div class="surface stack">
+          <h3>Kolejność kanałów</h3>
+          <p style="color: var(--gray-500);">Jeśli kolory na taśmie się nie zgadzają (np. czerwony świeci na zielono), wybierz kolejność układu sterującego.</p>
+          <div class="segmented small">
+            <template x-for="(o, i) in IC_ORDERS" :key="o">
+              <button :class="{ on: icOrder === i }" @click="icOrder = i" x-text="o"></button>
+            </template>
+          </div>
+          <div><button class="btn primary" @click="sendIcOrder()">Wyślij kolejność</button></div>
+
+          <template x-if="isMagic">
+            <div class="stack">
+              <hr>
+              <h3>Liczba diod (IC)</h3>
+              <div class="row">
+                <div style="width: 160px;"><input class="field" type="number" min="16" max="2048" x-model.number="icLength" placeholder="16–2048"></div>
+                <button class="btn primary" @click="sendIcLength()">Wyślij</button>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="surface stack">
+          <h3>Synchronizacja czasu</h3>
+          <p style="color: var(--gray-500);">Czas jest wysyłany automatycznie po połączeniu. Harmonogram korzysta z zegara lampy.</p>
+          <div class="row">
+            <template x-for="d in devices.filter(x => x.connected)" :key="d.id">
+              <button class="btn small" @click="syncTime(d.id)" x-text="'Synchronizuj: ' + d.name"></button>
+            </template>
+            <span x-show="!connectedCount" class="pill">brak połączonych lamp</span>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="eyebrow">Wysłane pakiety</div>
+          <div class="code-block">
+<pre><template x-if="!log.length"><span class="cm">// Tu pojawią się bajty wysyłane do charakterystyki 0xAE01.</span></template><template x-for="l in log" :key="l.id"><div><span class="cm" x-text="l.stamp"></span>  <span :class="l.dim ? 'cm' : 'str'" x-text="l.text"></span></div></template></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section style="padding: 32px 32px 96px;">
+    <div class="wrap">
+      <p class="eyebrow" style="margin-bottom: 10px;">Jak to działa</p>
+      <p style="color: var(--gray-500);">
+        Lampa ogłasza usługę <code>0xAF30</code>, a polecenia trafiają do charakterystyki <code>0xAE01</code> w usłudze <code>0xAE30</code> (zapis bez odpowiedzi). Protokół odtworzono z aplikacji Raingel (v202601071930).
+      </p>
+    </div>
+  </section>
+
+  <div class="toast" x-show="toastText" x-transition.opacity x-text="toastText"></div>
+</div>
+</body>
+</html>
