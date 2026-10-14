@@ -649,7 +649,6 @@
         icLength: 84,
         segments: [{ color: 0, end: 42 }, { color: 2, end: null }],
         segmentsBusy: false,
-        segmentsActive: false,
 
         RGB_SCENES, MAGIC_SCENES, TWO_PATH_SCENES, CLASSIC_RGB, CLASSIC_NAMES, PALETTE_ORDER, IC_ORDERS, WEEKDAYS, GROUPS, COLOR_TAB_NAMES,
 
@@ -661,7 +660,6 @@
           if (Number.isInteger(s.micColor) && s.micColor >= -1 && s.micColor < CLASSIC_RGB.length) this.micColor = s.micColor;
           const segs = this.load('segments', null);
           if (Array.isArray(segs) && segs.length >= 2) this.segments = segs;
-          this.segmentsActive = this.load('segmentsActive', false) === true;
 
           this.alarms = this.load('alarms', []);
           this.delay = this.load('delay', null);
@@ -752,16 +750,19 @@
         registerDevice(device) {
           if (this.dev(device.id)) return;
           const saved = this.load('group.' + device.id, null);
+          const bleName = device.name || 'Lamp';
           this.devices.push({
             id: device.id,
-            name: device.name || 'Lamp',
+            name: this.load('name.' + device.id, '') || bleName,
+            bleName,
             connected: false,
             connecting: false,
             waiting: false,
             manual: false,
             selected: this.selectedDevices.length === 0,
             group: Number.isInteger(saved) ? saved : 16,
-            type: null
+            type: null,
+            shortened: this.load('shortened.' + device.id, false) === true
           });
           device.addEventListener('gattserverdisconnected', () => this.onDisconnected(device.id));
           links.set(device.id, { device, char: null, chain: Promise.resolve(), retry: null, watching: false });
@@ -889,6 +890,11 @@
           if (this.devices.length && !this.selectedDevices.length) this.devices[0].selected = true;
         },
 
+        renameDevice(d) {
+          d.name = d.name.trim() || d.bleName;
+          this.save('name.' + d.id, d.name === d.bleName ? '' : d.name);
+        },
+
         onDisconnected(id) {
           const d = this.dev(id);
           const link = links.get(id);
@@ -973,14 +979,16 @@
           const confirmed = !!fromSegments;
           const targets = this.devices.filter(d => d.selected && d.connected);
           // Segments shrink the IC length; any other lighting command (power, colour, mode, rhythm,
-          // motor, laser) must drive the whole strip again, so restore the full length first.
-          if (!fromSegments && this.segmentsActive && targets.length && [0x01, 0x03, 0x04, 0x07, 0x10, 0x11, 0x15, 0x17].includes(bytes[0])) {
+          // motor, laser) must drive the whole strip again, so restore the full length first
+          // on every target lamp that was shortened.
+          const shortened = targets.filter(d => d.shortened);
+          if (!fromSegments && shortened.length && [0x01, 0x03, 0x04, 0x07, 0x10, 0x11, 0x15, 0x17].includes(bytes[0])) {
             const full = parseInt(this.icLength, 10);
             if (Number.isInteger(full) && full >= 16 && full <= 2048) {
-              this.setSegmentsActive(false);
+              this.setShortened(shortened, false);
               const lenPacket = [0x0f, full & 0xff, (full >> 8) & 0xff];
               this.pushLog(toHex(lenPacket));
-              await Promise.all(targets.map(d => this.writeTo(d.id, lenPacket)));
+              await Promise.all(shortened.map(d => this.writeTo(d.id, lenPacket)));
             }
           }
           this.pushLog(toHex(bytes), targets.length === 0);
@@ -1309,9 +1317,19 @@
           for (const p of step.packets) await this.send(p, true);
         },
 
+        get segmentsActive() {
+          return this.selectedDevices.some(d => d.shortened);
+        },
+
         setSegmentsActive(v) {
-          this.segmentsActive = v;
-          this.save('segmentsActive', v);
+          this.setShortened(this.devices.filter(d => d.selected && d.connected), v);
+        },
+
+        setShortened(list, v) {
+          list.forEach(d => {
+            d.shortened = v;
+            this.save('shortened.' + d.id, v);
+          });
         },
 
         restoreLength() {
@@ -1750,8 +1768,8 @@
             <input type="checkbox" :checked="d.selected" @change="toggleSelect(d); $event.target.checked = d.selected" title="Control this lamp" style="width: 18px; height: 18px; accent-color: var(--clay);">
             <span class="dot-state" :class="d.connected ? 'ok' : (d.connecting || d.waiting ? 'busy' : '')"></span>
             <div style="flex: 1 1 auto; min-width: 0;">
-              <div style="color: var(--slate); font-weight: 500;" x-text="d.name"></div>
-              <div style="font-size: 13px; color: var(--gray-500);" x-text="d.connected ? 'connected' : (d.connecting ? 'connecting…' : (d.waiting ? 'waiting for the lamp, will connect automatically…' : 'disconnected'))"></div>
+              <input class="field" style="padding: 4px 8px; border-color: transparent; background: transparent; color: var(--slate); font-weight: 500;" x-model="d.name" :placeholder="d.bleName" @change="renameDevice(d)" @keydown.enter="$event.target.blur()" title="Rename">
+              <div style="font-size: 13px; color: var(--gray-500); padding-left: 9px;" x-text="(d.name !== d.bleName ? d.bleName + ' · ' : '') + (d.connected ? 'connected' : (d.connecting ? 'connecting…' : (d.waiting ? 'waiting for the lamp, will connect automatically…' : 'disconnected')))"></div>
             </div>
             <select class="field" style="width: auto; padding: 6px 10px; font-size: 13px;" :value="d.group === null ? '' : String(d.group)" @change="setGroup(d, $event.target.value)" title="Lamp type">
               <option value="">type: unknown</option>
