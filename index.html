@@ -640,6 +640,10 @@
         micColor: -1,
 
         favorites: [],
+        setups: [],
+        setupForm: null,
+        // Device ids that override the selection while a setup is applied.
+        targetIds: null,
         alarms: [],
         alarmForm: null,
         delay: null,
@@ -665,6 +669,8 @@
           this.delay = this.load('delay', null);
           const favs = this.load('favorites', []);
           this.favorites = Array.isArray(favs) ? favs : [];
+          const setups = this.load('setups', []);
+          this.setups = Array.isArray(setups) ? setups : [];
 
           this.$watch('group', () => {
             this.colorTab = this.colorTabs[0];
@@ -709,6 +715,10 @@
         },
         get selectedDevices() {
           return this.devices.filter(d => d.selected);
+        },
+        targetDevices() {
+          if (this.targetIds) return this.devices.filter(d => this.targetIds.includes(d.id) && d.connected);
+          return this.devices.filter(d => d.selected && d.connected);
         },
         get group() {
           const d = this.selectedDevices[0];
@@ -762,7 +772,8 @@
             selected: this.selectedDevices.length === 0,
             group: Number.isInteger(saved) ? saved : 16,
             type: null,
-            shortened: this.load('shortened.' + device.id, false) === true
+            shortened: this.load('shortened.' + device.id, false) === true,
+            lastFavorite: ''
           });
           device.addEventListener('gattserverdisconnected', () => this.onDisconnected(device.id));
           links.set(device.id, { device, char: null, chain: Promise.resolve(), retry: null, watching: false });
@@ -977,7 +988,7 @@
         // fromSegments: packets of the static segments feature (sent with BLE confirmation when possible).
         async send(bytes, fromSegments) {
           const confirmed = !!fromSegments;
-          const targets = this.devices.filter(d => d.selected && d.connected);
+          const targets = this.targetDevices();
           // Segments shrink the IC length; any other lighting command (power, colour, mode, rhythm,
           // motor, laser) must drive the whole strip again, so restore the full length first
           // on every target lamp that was shortened.
@@ -1322,7 +1333,7 @@
         },
 
         setSegmentsActive(v) {
-          this.setShortened(this.devices.filter(d => d.selected && d.connected), v);
+          this.setShortened(this.targetDevices(), v);
         },
 
         setShortened(list, v) {
@@ -1432,6 +1443,10 @@
         removeFavorite(id) {
           this.favorites = this.favorites.filter(f => f.id !== id);
           this.saveFavorites();
+          this.setups.forEach(s => {
+            Object.keys(s.lamps).forEach(devId => { if (s.lamps[devId] === id) delete s.lamps[devId]; });
+          });
+          this.saveSetups();
         },
 
         favoriteDetails(f) {
@@ -1480,6 +1495,62 @@
           }
           this.power = true;
           for (const p of f.packets) await this.send(p);
+          this.targetDevices().forEach(d => { d.lastFavorite = f.id; });
+        },
+
+        // ---------- setups: one favourite (or off) per lamp, applied together ----------
+        newSetup() {
+          const lamps = {};
+          this.devices.forEach(d => { lamps[d.id] = d.lastFavorite || ''; });
+          this.setupForm = { name: 'Setup ' + (this.setups.length + 1), lamps };
+        },
+
+        saveSetup() {
+          const form = this.setupForm;
+          const lamps = {};
+          Object.keys(form.lamps).forEach(devId => { if (form.lamps[devId]) lamps[devId] = form.lamps[devId]; });
+          if (!Object.keys(lamps).length) { this.toast('Pick a favourite for at least one lamp.'); return; }
+          this.setups.push({ id: Date.now() + '-' + Math.floor(Math.random() * 1e6), name: form.name.trim() || 'Setup', lamps });
+          this.saveSetups();
+          this.setupForm = null;
+        },
+
+        saveSetups() {
+          this.save('setups', this.setups);
+        },
+
+        removeSetup(id) {
+          this.setups = this.setups.filter(s => s.id !== id);
+          this.saveSetups();
+        },
+
+        setupDetails(s) {
+          return Object.keys(s.lamps).map(devId => {
+            const d = this.dev(devId);
+            const action = s.lamps[devId];
+            const f = this.favorites.find(x => x.id === action);
+            return (d ? d.name : 'unknown lamp') + ': ' + (action === 'off' ? 'off' : (f ? f.name : '?'));
+          }).join(' · ');
+        },
+
+        async applySetup(s) {
+          const skipped = [];
+          try {
+            for (const devId of Object.keys(s.lamps)) {
+              const d = this.dev(devId);
+              if (!d || !d.connected) { skipped.push(d ? d.name : 'unknown lamp'); continue; }
+              this.targetIds = [devId];
+              if (s.lamps[devId] === 'off') {
+                await this.send([0x01, 0]);
+                continue;
+              }
+              const f = this.favorites.find(x => x.id === s.lamps[devId]);
+              if (f) await this.applyFavorite(f);
+            }
+          } finally {
+            this.targetIds = null;
+          }
+          if (skipped.length) this.toast('Not connected, skipped: ' + skipped.join(', '));
         },
 
         pickScene(i) {
@@ -1809,6 +1880,45 @@
             </div>
             <button class="btn small primary" @click="applyFavorite(f)">Apply</button>
             <button class="btn small" @click="removeFavorite(f.id)" title="Remove from favourites">✕</button>
+          </div>
+        </template>
+      </div>
+
+      <div class="surface" x-show="favorites.length && devices.length > 1">
+        <div class="row" style="justify-content: space-between; margin-bottom: 6px;">
+          <h3>Setups</h3>
+          <button class="btn small" x-show="!setupForm" @click="newSetup()">+ New setup</button>
+        </div>
+        <p x-show="!setups.length && !setupForm" style="color: var(--gray-500);">A favourite for each lamp, applied with one click. Apply favourites to the lamps first, then the new setup starts from them.</p>
+        <template x-for="s in setups" :key="s.id">
+          <div class="device">
+            <div style="flex: 1 1 auto; min-width: 0;">
+              <input class="field" style="padding: 4px 8px; border-color: transparent; background: transparent;" x-model="s.name" @change="saveSetups()" title="Rename">
+              <div style="font-size: 13px; color: var(--gray-500); padding-left: 9px;" x-text="setupDetails(s)"></div>
+            </div>
+            <button class="btn small primary" @click="applySetup(s)">Apply</button>
+            <button class="btn small" @click="removeSetup(s.id)" title="Remove setup">✕</button>
+          </div>
+        </template>
+        <template x-if="setupForm">
+          <div style="margin-top: 10px;">
+            <input class="field" x-model="setupForm.name" placeholder="Setup name" style="margin-bottom: 8px;">
+            <template x-for="d in devices" :key="d.id">
+              <div class="row" style="justify-content: space-between; padding: 6px 0;">
+                <span x-text="d.name"></span>
+                <select class="field" style="width: auto; padding: 6px 10px; font-size: 13px;" x-model="setupForm.lamps[d.id]">
+                  <option value="">leave unchanged</option>
+                  <option value="off">turn off</option>
+                  <template x-for="f in favorites" :key="f.id">
+                    <option :value="f.id" x-text="f.name" :selected="setupForm.lamps[d.id] === f.id"></option>
+                  </template>
+                </select>
+              </div>
+            </template>
+            <div class="row" style="margin-top: 8px;">
+              <button class="btn primary" @click="saveSetup()">Save setup</button>
+              <button class="btn" @click="setupForm = null">Cancel</button>
+            </div>
           </div>
         </template>
       </div>
