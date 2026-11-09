@@ -991,7 +991,7 @@
           const targets = this.targetDevices();
           // Segments shrink the IC length; any other lighting command (power, colour, mode, rhythm,
           // motor, laser) must drive the whole strip again, so restore the full length first
-          // on every target lamp that was shortened.
+          // on every target lamp that was shortened. Only there: the lamp flashes on every 0F.
           const shortened = targets.filter(d => d.shortened);
           if (!fromSegments && shortened.length && [0x01, 0x03, 0x04, 0x07, 0x10, 0x11, 0x15, 0x17].includes(bytes[0])) {
             const full = parseInt(this.icLength, 10);

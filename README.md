@@ -8,6 +8,10 @@ Live version: [michalkowol.github.io/colorlamp](https://michalkowol.github.io/co
 
 Web Bluetooth needs Chrome, Edge or Opera (desktop or Android) and a secure context. Open the page from `https://` or `localhost`, for example `python3 -m http.server`. It does not work from `file://` or on iOS.
 
+## Terminal version
+
+`rust/` holds a TUI and CLI written in Rust with the same features, see [rust/README.md](rust/README.md).
+
 ## Bluetooth
 
 | Item | Value |
@@ -115,7 +119,7 @@ There is no per-LED command. LEDs past the IC length (`0F`) keep their last colo
 
 Painting from the bottom up does not work. "Apply all" waits 3 s between segments, otherwise the lamp misses some of them. Each segment can also be applied on its own. The minimum length is 16 LEDs.
 
-While segments are active, the first power, colour, mode, rhythm, motor or laser command first sends `0F` with the full length. Brightness does not reset segments.
+While segments are active, the first power, colour, mode, rhythm, motor or laser command first sends `0F` with the full length. Only lamps with active segments get it, because the lamp flashes on every `0F`, even when it is off. Brightness does not reset segments.
 
 ### Phone microphone
 

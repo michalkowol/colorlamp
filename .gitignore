@@ -23,3 +23,6 @@ site/
 WebServerLite.jar
 Raingel_release_C55_V202601071930.apk
 index-claude-style.html
+
+# Rust build output
+rust/target/
